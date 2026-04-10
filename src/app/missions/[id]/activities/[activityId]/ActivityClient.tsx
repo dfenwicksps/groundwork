@@ -1,0 +1,512 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
+import type { Mission, Activity } from "@/lib/missions";
+import type { JournalEntry, Challenge } from "@/types/database";
+import AppShell from "@/components/layout/AppShell";
+
+interface Props {
+  mission: Mission;
+  activity: Activity;
+  userId: string;
+  isCompleted: boolean;
+  existingEntry: JournalEntry | null;
+  existingChallenge: Challenge | null;
+}
+
+export default function ActivityClient({
+  mission,
+  activity,
+  userId,
+  isCompleted,
+  existingEntry,
+  existingChallenge,
+}: Props) {
+  // Cast to any once — avoids the @supabase/ssr generic inference bug
+  // where .update()/.insert() payloads type as `never`
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createClient() as any;
+
+  const [response, setResponse] = useState(existingEntry?.response || "");
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [valueReasons, setValueReasons] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(isCompleted);
+  const [aiReflection, setAiReflection] = useState<string | null>(
+    existingEntry?.ai_reflection || null
+  );
+  const [challengeDebrief, setChallengeDebrief] = useState(
+    existingChallenge?.debrief_response || ""
+  );
+  const [debriefSubmitted, setDebriefSubmitted] = useState(
+    !!existingChallenge?.completed_at
+  );
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const entryIdRef = useRef<string | null>(existingEntry?.id || null);
+
+  // ─── Autosave every 30 seconds ───────────────────────────────────────────────
+  const autoSave = useCallback(async () => {
+    if (!response.trim() || activity.type === "challenge") return;
+    setSaving(true);
+    if (entryIdRef.current) {
+      await db
+        .from("journal_entries")
+        .update({ response, updated_at: new Date().toISOString() })
+        .eq("id", entryIdRef.current);
+    } else {
+      const { data } = await db
+        .from("journal_entries")
+        .insert({
+          user_id: userId,
+          mission_id: mission.id,
+          activity_id: activity.id,
+          prompt: activity.prompt,
+          response,
+          is_milestone: activity.isMilestone || false,
+        })
+        .select("id")
+        .single();
+      if (data?.id) entryIdRef.current = data.id;
+    }
+    setLastSaved(new Date());
+    setSaving(false);
+  }, [response, activity, mission.id, userId, db]);
+
+  useEffect(() => {
+    if (submitted) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(autoSave, 30000);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [response, autoSave, submitted]);
+
+  // ─── Values picker ───────────────────────────────────────────────────────────
+  function toggleValue(val: string) {
+    if (selectedValues.includes(val)) {
+      setSelectedValues(selectedValues.filter((v) => v !== val));
+      const updated = { ...valueReasons };
+      delete updated[val];
+      setValueReasons(updated);
+    } else if (selectedValues.length < (activity.valuesCount || 5)) {
+      setSelectedValues([...selectedValues, val]);
+    }
+  }
+
+  // ─── Submit ──────────────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    setSubmitting(true);
+
+    let finalResponse = response;
+    if (activity.type === "values_picker") {
+      finalResponse = selectedValues
+        .map((v) => `${v}: ${valueReasons[v] || "(no reason given)"}`)
+        .join("\n");
+    }
+
+    let entryId = entryIdRef.current;
+
+    if (activity.type !== "challenge") {
+      if (entryId) {
+        await db
+          .from("journal_entries")
+          .update({ response: finalResponse })
+          .eq("id", entryId);
+      } else {
+        const { data } = await db
+          .from("journal_entries")
+          .insert({
+            user_id: userId,
+            mission_id: mission.id,
+            activity_id: activity.id,
+            prompt: activity.prompt,
+            response: finalResponse,
+            is_milestone: activity.isMilestone || false,
+          })
+          .select("id")
+          .single();
+        if (data?.id) {
+          entryId = data.id;
+          entryIdRef.current = data.id;
+        }
+      }
+    }
+
+    // Mark progress
+    await db.from("mission_progress").upsert({
+      user_id: userId,
+      mission_id: mission.id,
+      activity_id: activity.id,
+    });
+
+    // Create challenge record
+    if (activity.type === "challenge") {
+      await db.from("challenges").insert({
+        user_id: userId,
+        mission_id: mission.id,
+        challenge_text: activity.prompt,
+      });
+    }
+
+    // Request AI reflection (non-blocking, fail silently)
+    if (activity.type !== "challenge" && finalResponse.trim().length > 20 && entryId) {
+      fetchAiReflection(finalResponse, entryId);
+    }
+
+    setSubmitted(true);
+    setSubmitting(false);
+  }
+
+  async function fetchAiReflection(text: string, entryId: string) {
+    try {
+      const res = await fetch("/api/reflect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, entryId }),
+      });
+      if (res.ok) {
+        const { reflection } = await res.json();
+        if (reflection) setAiReflection(reflection);
+      }
+    } catch {
+      // Fail silently
+    }
+  }
+
+  async function handleDebriefSubmit() {
+    if (!existingChallenge?.id || !challengeDebrief.trim()) return;
+    setSubmitting(true);
+    await db
+      .from("challenges")
+      .update({
+        completed_at: new Date().toISOString(),
+        debrief_response: challengeDebrief,
+      })
+      .eq("id", existingChallenge.id);
+
+    await db.from("journal_entries").insert({
+      user_id: userId,
+      mission_id: mission.id,
+      activity_id: `${activity.id}-debrief`,
+      prompt: "Reflect on your challenge: what happened?",
+      response: challengeDebrief,
+    });
+
+    setDebriefSubmitted(true);
+    setSubmitting(false);
+  }
+
+  const canSubmitJournal = response.trim().length > 10;
+  const canSubmitValues =
+    activity.type === "values_picker" &&
+    selectedValues.length === (activity.valuesCount || 5) &&
+    selectedValues.every((v) => valueReasons[v]?.trim());
+
+  const showDebrief =
+    activity.type === "challenge" &&
+    existingChallenge &&
+    !existingChallenge.completed_at;
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <AppShell>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+
+        {/* Back link */}
+        <Link
+          href={`/missions/${mission.id}`}
+          className="inline-flex items-center gap-1 text-ink-muted hover:text-ink text-sm mb-6 transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {mission.title}
+        </Link>
+
+        {/* Activity header */}
+        <div className="mb-6" data-animate="1">
+          <div className="text-xs font-medium text-ink-muted mb-1">{activity.subtitle}</div>
+          <h1
+            className="text-2xl text-navy mb-2"
+            style={{ fontFamily: "'Fraunces', serif", fontWeight: 400 }}
+          >
+            {activity.title}
+          </h1>
+          {activity.isMilestone && (
+            <span className="inline-flex items-center gap-1 text-xs text-gold bg-gold/10 px-2 py-1 rounded-full">
+              ★ Milestone entry
+            </span>
+          )}
+        </div>
+
+        {/* ─── JOURNAL / MILESTONE LETTER ─── */}
+        {(activity.type === "journal" || activity.type === "milestone_letter") && (
+          <div data-animate="2">
+            <div className="card p-5 mb-4">
+              <p className="text-ink leading-relaxed">{activity.prompt}</p>
+              {activity.secondaryPrompt && (
+                <p className="text-sm text-ink-muted leading-relaxed italic mt-2">
+                  {activity.secondaryPrompt}
+                </p>
+              )}
+            </div>
+
+            {submitted ? (
+              <div>
+                <div className="card p-5 mb-4 bg-surface-muted">
+                  <p className="text-sm text-ink-muted mb-2 font-medium">Your reflection</p>
+                  <p className="text-ink leading-relaxed whitespace-pre-wrap">{response}</p>
+                </div>
+
+                {aiReflection && (
+                  <div
+                    className="rounded-xl p-5 mb-4 border"
+                    style={{ background: "rgba(46,125,140,0.04)", borderColor: "rgba(46,125,140,0.2)" }}
+                    data-animate="3"
+                  >
+                    <div className="text-xs font-semibold text-teal mb-2 uppercase tracking-wide">
+                      Something to sit with
+                    </div>
+                    <p className="text-ink leading-relaxed text-sm">{aiReflection}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Link href={`/missions/${mission.id}`} className="btn btn-secondary flex-1">
+                    Back to mission
+                  </Link>
+                  <Link href="/dashboard" className="btn btn-primary flex-1">
+                    Dashboard
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="relative mb-3">
+                  <textarea
+                    className="journal-textarea"
+                    value={response}
+                    onChange={(e) => setResponse(e.target.value)}
+                    placeholder="Write whatever comes to mind. There are no wrong answers here."
+                    rows={8}
+                  />
+                  <div className="absolute bottom-3 right-3 text-xs text-ink-muted/50">
+                    {saving ? "Saving…" : lastSaved ? "Saved" : ""}
+                  </div>
+                </div>
+
+                {activity.secondaryPrompt && response.length > 50 && (
+                  <div className="mb-4 p-4 bg-teal/5 rounded-xl border border-teal/15">
+                    <p className="text-sm text-teal-dark italic">{activity.secondaryPrompt}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmitJournal || submitting}
+                  className="btn btn-primary w-full"
+                >
+                  {submitting ? "Saving…" : "Save reflection"}
+                </button>
+                <p className="text-xs text-ink-muted text-center mt-3">
+                  All entries are private. Only you can see this.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── VALUES PICKER ─── */}
+        {activity.type === "values_picker" && (
+          <div data-animate="2">
+            <div className="card p-5 mb-5">
+              <p className="text-ink leading-relaxed">{activity.prompt}</p>
+            </div>
+
+            {submitted ? (
+              <div>
+                <div className="card p-5 mb-4">
+                  <p className="text-sm text-ink-muted font-medium mb-3">Your values</p>
+                  <div className="space-y-3">
+                    {existingEntry?.response.split("\n").map((line, i) => (
+                      <div key={i} className="text-sm text-ink">
+                        <span className="font-semibold text-navy">{line.split(":")[0]}</span>
+                        {line.includes(":") && (
+                          <span className="text-ink-muted">
+                            {": " + line.split(": ").slice(1).join(": ")}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Link href={`/missions/${mission.id}`} className="btn btn-primary w-full">
+                  Back to mission
+                </Link>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-ink-muted mb-4">
+                  Select {activity.valuesCount || 5} values ({selectedValues.length} of{" "}
+                  {activity.valuesCount || 5} chosen)
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  {(activity.valuesOptions || []).map((val) => {
+                    const sel = selectedValues.includes(val);
+                    const disabled = !sel && selectedValues.length >= (activity.valuesCount || 5);
+                    return (
+                      <button
+                        key={val}
+                        onClick={() => toggleValue(val)}
+                        disabled={disabled}
+                        className={cn(
+                          "p-3 rounded-xl text-sm font-medium border transition-all text-left",
+                          sel
+                            ? "bg-navy text-white border-navy"
+                            : disabled
+                            ? "opacity-40 bg-surface-muted border-surface-border cursor-not-allowed"
+                            : "bg-white text-ink border-surface-border hover:border-navy/30"
+                        )}
+                      >
+                        {val}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedValues.length > 0 && (
+                  <div className="space-y-3 mb-5">
+                    <p className="text-sm font-medium text-ink">
+                      For each value, write one sentence about why it matters to you:
+                    </p>
+                    {selectedValues.map((val) => (
+                      <div key={val}>
+                        <label className="block text-sm font-medium text-navy mb-1">{val}</label>
+                        <input
+                          type="text"
+                          className="input text-sm"
+                          placeholder={`Why does ${val} matter to you?`}
+                          value={valueReasons[val] || ""}
+                          onChange={(e) =>
+                            setValueReasons({ ...valueReasons, [val]: e.target.value })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmitValues || submitting}
+                  className="btn btn-primary w-full"
+                >
+                  {submitting ? "Saving…" : "Save my values"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── CHALLENGE ─── */}
+        {activity.type === "challenge" && (
+          <div data-animate="2">
+            {showDebrief ? (
+              <div>
+                <div className="card p-5 mb-5 border-l-4" style={{ borderLeftColor: "#C8982A" }}>
+                  <p className="text-xs font-semibold text-gold mb-2 uppercase tracking-wide">
+                    Weekly challenge — check in
+                  </p>
+                  <p className="text-ink text-sm leading-relaxed">
+                    {existingChallenge?.challenge_text}
+                  </p>
+                </div>
+
+                {debriefSubmitted ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-3">✅</div>
+                    <p className="font-medium text-navy mb-2">Well done.</p>
+                    <p className="text-sm text-ink-muted mb-6">Your reflection has been saved.</p>
+                    <Link href="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-medium text-ink mb-1">Did you do it? What happened?</p>
+                    <p className="text-sm text-ink-muted mb-4">
+                      What did it feel like to do something that was genuinely you?
+                    </p>
+                    <textarea
+                      className="journal-textarea mb-3"
+                      rows={6}
+                      value={challengeDebrief}
+                      onChange={(e) => setChallengeDebrief(e.target.value)}
+                      placeholder="Be honest. It's okay if you didn't do it — just write about what got in the way."
+                    />
+                    <button
+                      onClick={handleDebriefSubmit}
+                      disabled={!challengeDebrief.trim() || submitting}
+                      className="btn btn-primary w-full"
+                    >
+                      {submitting ? "Saving…" : "Save reflection"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : submitted ? (
+              <div className="text-center py-10">
+                <div className="text-4xl mb-4">🎯</div>
+                <h2
+                  className="text-xl text-navy mb-4"
+                  style={{ fontFamily: "'Fraunces', serif", fontWeight: 400 }}
+                >
+                  Challenge accepted.
+                </h2>
+                <div className="card p-5 mb-6 text-left">
+                  <p className="text-sm text-ink leading-relaxed">{activity.prompt}</p>
+                </div>
+                <p className="text-sm text-ink-muted mb-6">
+                  Come back in a week to reflect on how it went.
+                </p>
+                <Link href="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+              </div>
+            ) : (
+              <div>
+                <div
+                  className="rounded-2xl p-6 mb-6 text-white text-center"
+                  style={{ background: "#C8982A" }}
+                >
+                  <div className="text-3xl mb-3">🎯</div>
+                  <p
+                    className="text-xl mb-3"
+                    style={{ fontFamily: "'Fraunces', serif", fontWeight: 400, fontStyle: "italic" }}
+                  >
+                    Your challenge this week
+                  </p>
+                  <p className="text-white/90 leading-relaxed">{activity.prompt}</p>
+                </div>
+                <p className="text-sm text-ink-muted text-center mb-5 leading-relaxed">
+                  Come back in 7 days to reflect on what happened.
+                  The reflection is the important part.
+                </p>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="btn btn-primary w-full"
+                >
+                  {submitting ? "Starting challenge…" : "Accept this challenge"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}
