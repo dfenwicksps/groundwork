@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { Mission, Activity } from "@/lib/missions";
+import { VALUES_WITH_DEFINITIONS } from "@/lib/missions";
 import type { JournalEntry, Challenge } from "@/types/database";
 import AppShell from "@/components/layout/AppShell";
 
@@ -35,6 +36,7 @@ export default function ActivityClient({
   const [response, setResponse] = useState(existingEntry?.response || "");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valueReasons, setValueReasons] = useState<Record<string, string>>({});
+  const [hoveredValue, setHoveredValue] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +51,7 @@ export default function ActivityClient({
     !!existingChallenge?.completed_at
   );
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const entryIdRef = useRef<string | null>(existingEntry?.id || null);
 
@@ -99,6 +102,18 @@ export default function ActivityClient({
     } else if (selectedValues.length < (activity.valuesCount || 5)) {
       setSelectedValues([...selectedValues, val]);
     }
+  }
+
+  // ─── Sentence starter ────────────────────────────────────────────────────────
+  function applySentenceStarter(starter: string) {
+    const newText = response ? `${response}\n\n${starter}` : starter;
+    setResponse(newText);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newText.length, newText.length);
+      }
+    }, 0);
   }
 
   // ─── Submit ──────────────────────────────────────────────────────────────────
@@ -233,7 +248,18 @@ export default function ActivityClient({
 
         {/* Activity header */}
         <div className="mb-6" data-animate="1">
-          <div className="text-xs font-medium text-ink-muted mb-1">{activity.subtitle}</div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="text-xs font-medium text-ink-muted">{activity.subtitle}</div>
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                background: `${mission.colour}18`,
+                color: mission.colour,
+              }}
+            >
+              {mission.phaseLabel}
+            </span>
+          </div>
           <h1
             className="text-2xl text-navy mb-2"
             style={{ fontFamily: "'Fraunces', serif", fontWeight: 400 }}
@@ -249,7 +275,7 @@ export default function ActivityClient({
 
         {/* Scaffolding — intro, paired story, warm-up */}
         {!submitted && (activity.intro || pairedStory || activity.warmUp) && (
-          <div className="mb-6 space-y-4" data-animate="1">
+          <div className="mb-6 space-y-3" data-animate="1">
             {/* Intro — why this step matters */}
             {activity.intro && (
               <p className="text-sm text-ink-muted leading-relaxed">
@@ -291,7 +317,7 @@ export default function ActivityClient({
             {activity.warmUp && (
               <div className="rounded-xl bg-surface-muted px-4 py-3 border border-surface-border">
                 <div className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5">
-                  Warm up
+                  Before you write
                 </div>
                 <p className="text-sm text-ink leading-relaxed">
                   {activity.warmUp}
@@ -304,12 +330,36 @@ export default function ActivityClient({
         {/* ─── JOURNAL / MILESTONE LETTER ─── */}
         {(activity.type === "journal" || activity.type === "milestone_letter") && (
           <div data-animate="2">
+            {/* Prompt card — shows scaffolding steps if available, otherwise main prompt */}
             <div className="card p-5 mb-4">
-              <p className="text-ink leading-relaxed">{activity.prompt}</p>
-              {activity.secondaryPrompt && (
-                <p className="text-sm text-ink-muted leading-relaxed italic mt-2">
-                  {activity.secondaryPrompt}
-                </p>
+              {activity.scaffoldingSteps && activity.scaffoldingSteps.length > 0 ? (
+                <div>
+                  <p className="text-sm text-ink-muted mb-3 leading-relaxed">
+                    {activity.prompt}
+                  </p>
+                  <ol className="space-y-2">
+                    {activity.scaffoldingSteps.map((step, i) => (
+                      <li key={i} className="flex gap-3">
+                        <span
+                          className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold text-white mt-0.5"
+                          style={{ background: mission.colour }}
+                        >
+                          {i + 1}
+                        </span>
+                        <p className="text-sm text-ink leading-relaxed">{step}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-ink leading-relaxed">{activity.prompt}</p>
+                  {activity.secondaryPrompt && (
+                    <p className="text-sm text-ink-muted leading-relaxed italic mt-2">
+                      {activity.secondaryPrompt}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -344,8 +394,28 @@ export default function ActivityClient({
               </div>
             ) : (
               <div>
+                {/* Sentence starters */}
+                {activity.sentenceStarters && activity.sentenceStarters.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-ink-muted mb-2">Try starting with:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {activity.sentenceStarters.map((starter) => (
+                        <button
+                          key={starter}
+                          type="button"
+                          onClick={() => applySentenceStarter(starter)}
+                          className="text-xs px-3 py-1.5 rounded-full border border-surface-border bg-white text-ink-muted hover:border-navy/30 hover:text-ink transition-all"
+                        >
+                          {starter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="relative mb-3">
                   <textarea
+                    ref={textareaRef}
                     className="journal-textarea"
                     value={response}
                     onChange={(e) => setResponse(e.target.value)}
@@ -357,7 +427,7 @@ export default function ActivityClient({
                   </div>
                 </div>
 
-                {activity.secondaryPrompt && response.length > 50 && (
+                {activity.secondaryPrompt && response.length > 50 && !activity.scaffoldingSteps && (
                   <div className="mb-4 p-4 bg-teal/5 rounded-xl border border-teal/15">
                     <p className="text-sm text-teal-dark italic">{activity.secondaryPrompt}</p>
                   </div>
@@ -410,10 +480,10 @@ export default function ActivityClient({
               <div>
                 <p className="text-sm text-ink-muted mb-4">
                   Select {activity.valuesCount || 5} values ({selectedValues.length} of{" "}
-                  {activity.valuesCount || 5} chosen)
+                  {activity.valuesCount || 5} chosen) — hover any value to see its definition
                 </p>
 
-                <div className="grid grid-cols-2 gap-2 mb-6">
+                <div className="grid grid-cols-2 gap-2 mb-3">
                   {(activity.valuesOptions || []).map((val) => {
                     const sel = selectedValues.includes(val);
                     const disabled = !sel && selectedValues.length >= (activity.valuesCount || 5);
@@ -421,6 +491,8 @@ export default function ActivityClient({
                       <button
                         key={val}
                         onClick={() => toggleValue(val)}
+                        onMouseEnter={() => setHoveredValue(val)}
+                        onMouseLeave={() => setHoveredValue(null)}
                         disabled={disabled}
                         className={cn(
                           "p-3 rounded-xl text-sm font-medium border transition-all text-left",
@@ -437,18 +509,35 @@ export default function ActivityClient({
                   })}
                 </div>
 
+                {/* Value definition tooltip area — fixed height prevents layout shift */}
+                <div className="h-[5.5rem] mb-4 flex items-start">
+                  {hoveredValue ? (
+                    <div className="w-full rounded-xl bg-teal/5 border border-teal/20 px-4 py-3 text-sm text-ink-muted">
+                      <span className="font-semibold text-ink">{hoveredValue}: </span>
+                      {VALUES_WITH_DEFINITIONS[hoveredValue] || ""}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ink-muted/50 px-1 pt-1">Hover over a value to learn more</p>
+                  )}
+                </div>
+
                 {selectedValues.length > 0 && (
-                  <div className="space-y-3 mb-5">
+                  <div className="space-y-4 mb-5">
                     <p className="text-sm font-medium text-ink">
                       For each value, write one sentence about why it matters to you:
                     </p>
                     {selectedValues.map((val) => (
                       <div key={val}>
-                        <label className="block text-sm font-medium text-navy mb-1">{val}</label>
+                        <label className="block text-sm font-medium text-navy mb-0.5">{val}</label>
+                        {VALUES_WITH_DEFINITIONS[val] && (
+                          <p className="text-xs text-ink-muted mb-1.5 leading-relaxed">
+                            {VALUES_WITH_DEFINITIONS[val]}
+                          </p>
+                        )}
                         <input
                           type="text"
                           className="input text-sm"
-                          placeholder={`Why does ${val} matter to you?`}
+                          placeholder={`Why does ${val} matter to you personally?`}
                           value={valueReasons[val] || ""}
                           onChange={(e) =>
                             setValueReasons({ ...valueReasons, [val]: e.target.value })

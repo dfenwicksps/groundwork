@@ -218,6 +218,9 @@ export default function DashboardClient({
                   >
                     {mission.title}
                   </div>
+                  <div className="text-xs text-ink-muted/70 mb-0.5">
+                    {mission.phaseLabel}
+                  </div>
                   <div className="text-xs text-ink-muted mb-3 line-clamp-1" style={{ fontStyle: "italic" }}>
                     {mission.question}
                   </div>

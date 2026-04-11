@@ -57,8 +57,13 @@ export default function MissionDetailClient({
             Back
           </Link>
 
-          <div className="text-xs font-semibold opacity-60 mb-2 uppercase tracking-wider">
-            {mission.subtitle}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs font-semibold opacity-60 uppercase tracking-wider">
+              {mission.subtitle}
+            </div>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/15 text-white/80">
+              {mission.phaseLabel}
+            </span>
           </div>
           <h1
             className="text-3xl text-white mb-2"
@@ -70,8 +75,11 @@ export default function MissionDetailClient({
           >
             {mission.question}
           </h1>
-          <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-md">
+          <p className="text-white/75 text-sm leading-relaxed mb-1 max-w-md">
             {mission.description}
+          </p>
+          <p className="text-white/50 text-xs leading-relaxed mb-5 max-w-md italic">
+            {mission.phaseDescription}
           </p>
 
           {/* Progress */}
