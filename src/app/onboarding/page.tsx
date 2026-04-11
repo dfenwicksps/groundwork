@@ -33,18 +33,54 @@ const WHY_OPTIONS = [
 ];
 
 const QUICK_VALUES = [
-  "Courage",
-  "Kindness",
-  "Honesty",
-  "Creativity",
-  "Growth",
-  "Family",
-  "Humour",
-  "Compassion",
-  "Curiosity",
-  "Resilience",
-  "Fairness",
-  "Authenticity",
+  {
+    label: "Courage",
+    description: "Doing what's right or necessary even when it scares you — speaking up, taking risks, being vulnerable.",
+  },
+  {
+    label: "Kindness",
+    description: "Choosing to be warm and generous with others, especially when it costs you something.",
+  },
+  {
+    label: "Honesty",
+    description: "Telling the truth — to others and to yourself — even when it's uncomfortable.",
+  },
+  {
+    label: "Creativity",
+    description: "Finding new ways to express yourself, solve problems, or see the world differently.",
+  },
+  {
+    label: "Growth",
+    description: "Constantly learning, improving, and pushing yourself beyond where you are now.",
+  },
+  {
+    label: "Family",
+    description: "The people who are closest to you — by blood or by bond — are at the centre of what you care about.",
+  },
+  {
+    label: "Humour",
+    description: "Bringing lightness and laughter to life, and finding the funny in even the hard stuff.",
+  },
+  {
+    label: "Compassion",
+    description: "Genuinely feeling with others and being moved to help — not just feeling sorry, but caring deeply.",
+  },
+  {
+    label: "Curiosity",
+    description: "A hunger to understand — people, ideas, the world. You ask why, and you actually want to know.",
+  },
+  {
+    label: "Resilience",
+    description: "Bouncing back from hard things. Not pretending they didn't hurt — but not staying down either.",
+  },
+  {
+    label: "Fairness",
+    description: "Believing everyone deserves to be treated equally and standing up when they're not.",
+  },
+  {
+    label: "Authenticity",
+    description: "Being real — showing up as yourself rather than who you think people want you to be.",
+  },
 ];
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +97,7 @@ export default function OnboardingPage() {
 
   // Step 2
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [hoveredValue, setHoveredValue] = useState<string | null>(null);
 
   // Step 3
   const [supportName, setSupportName] = useState("");
@@ -73,6 +110,8 @@ export default function OnboardingPage() {
       setSelectedValues([...selectedValues, val]);
     }
   }
+
+  const hoveredValueData = QUICK_VALUES.find((v) => v.label === hoveredValue);
 
   async function handleFinish(skip: boolean = false) {
     setLoading(true);
@@ -245,15 +284,17 @@ export default function OnboardingPage() {
               the ones you think you should have.
             </p>
 
-            <div className="grid grid-cols-3 gap-2 mb-6">
-              {QUICK_VALUES.map((val) => {
-                const selected = selectedValues.includes(val);
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {QUICK_VALUES.map(({ label }) => {
+                const selected = selectedValues.includes(label);
                 const disabled = !selected && selectedValues.length >= 3;
                 return (
                   <button
-                    key={val}
+                    key={label}
                     type="button"
-                    onClick={() => toggleValue(val)}
+                    onClick={() => toggleValue(label)}
+                    onMouseEnter={() => setHoveredValue(label)}
+                    onMouseLeave={() => setHoveredValue(null)}
                     disabled={disabled}
                     className={cn(
                       "p-3 rounded-xl text-sm font-medium transition-all border",
@@ -264,10 +305,22 @@ export default function OnboardingPage() {
                         : "bg-white text-ink border-surface-border hover:border-navy/30"
                     )}
                   >
-                    {val}
+                    {label}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Tooltip / description area */}
+            <div className="mb-4 min-h-[3rem] flex items-start">
+              {hoveredValueData ? (
+                <div className="w-full rounded-xl bg-teal/5 border border-teal/20 px-4 py-3 text-sm text-ink-muted animate-fade-up">
+                  <span className="font-semibold text-ink">{hoveredValueData.label}: </span>
+                  {hoveredValueData.description}
+                </div>
+              ) : (
+                <p className="text-xs text-ink-muted/50 px-1">Hover over a value to learn more</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-xs text-ink-muted mb-6">
