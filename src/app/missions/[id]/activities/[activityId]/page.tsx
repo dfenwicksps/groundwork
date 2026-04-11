@@ -54,6 +54,19 @@ export default async function ActivityPage({
     .single();
   const existingChallenge = _existingChallenge as import("@/types/database").Challenge | null;
 
+  // Fetch paired story if this activity has one
+  let pairedStory: { id: string; title: string; teaser: string } | null = null;
+  if (activity.storyBefore !== undefined) {
+    const { data: missionStories } = await supabase
+      .from("stories")
+      .select("id, title, teaser")
+      .eq("mission_id", missionId);
+    const storiesArr = missionStories as Array<{ id: string; title: string; teaser: string }> | null;
+    if (storiesArr && storiesArr[activity.storyBefore]) {
+      pairedStory = storiesArr[activity.storyBefore];
+    }
+  }
+
   return (
     <ActivityClient
       mission={mission}
@@ -62,6 +75,7 @@ export default async function ActivityPage({
       isCompleted={!!existing}
       existingEntry={existingEntry || null}
       existingChallenge={existingChallenge || null}
+      pairedStory={pairedStory}
     />
   );
 }

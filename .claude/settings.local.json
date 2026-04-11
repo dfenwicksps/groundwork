@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -r \"GOOGLE\" /Users/d.fenwick/PycharmProjects/groundwork/.env* --include=\".env*\")"
+      "Bash(grep -r \"GOOGLE\" /Users/d.fenwick/PycharmProjects/groundwork/.env* --include=\".env*\")",
+      "Bash(npx next:*)"
     ]
   }
 }

@@ -15,6 +15,7 @@ interface Props {
   isCompleted: boolean;
   existingEntry: JournalEntry | null;
   existingChallenge: Challenge | null;
+  pairedStory?: { id: string; title: string; teaser: string } | null;
 }
 
 export default function ActivityClient({
@@ -24,6 +25,7 @@ export default function ActivityClient({
   isCompleted,
   existingEntry,
   existingChallenge,
+  pairedStory,
 }: Props) {
   // Cast to any once — avoids the @supabase/ssr generic inference bug
   // where .update()/.insert() payloads type as `never`
@@ -244,6 +246,60 @@ export default function ActivityClient({
             </span>
           )}
         </div>
+
+        {/* Scaffolding — intro, paired story, warm-up */}
+        {!submitted && (activity.intro || pairedStory || activity.warmUp) && (
+          <div className="mb-6 space-y-4" data-animate="1">
+            {/* Intro — why this step matters */}
+            {activity.intro && (
+              <p className="text-sm text-ink-muted leading-relaxed">
+                {activity.intro}
+              </p>
+            )}
+
+            {/* Paired story */}
+            {pairedStory && (
+              <Link
+                href={`/stories/${pairedStory.id}`}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed transition-all hover:border-solid hover:shadow-soft"
+                style={{ borderColor: `${mission.colour}40`, background: `${mission.colour}06` }}
+              >
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs"
+                  style={{ background: `${mission.colour}18` }}
+                >
+                  📖
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: mission.colour }}>
+                    Read someone else&apos;s story first
+                  </div>
+                  <div className="text-sm font-medium text-ink truncate">
+                    {pairedStory.title}
+                  </div>
+                  <div className="text-xs text-ink-muted mt-0.5 truncate">
+                    {pairedStory.teaser}
+                  </div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-muted/40 flex-shrink-0">
+                  <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
+
+            {/* Warm-up prompt */}
+            {activity.warmUp && (
+              <div className="rounded-xl bg-surface-muted px-4 py-3 border border-surface-border">
+                <div className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5">
+                  Warm up
+                </div>
+                <p className="text-sm text-ink leading-relaxed">
+                  {activity.warmUp}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ─── JOURNAL / MILESTONE LETTER ─── */}
         {(activity.type === "journal" || activity.type === "milestone_letter") && (

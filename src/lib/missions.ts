@@ -11,6 +11,12 @@ export interface Activity {
   valuesOptions?: string[];
   valuesCount?: number;
   locked?: boolean;
+  /** Context paragraph — why this step matters in the journey */
+  intro?: string;
+  /** An easier lead-in question to warm up before the main prompt */
+  warmUp?: string;
+  /** Index (0-based) of this mission's story to surface before this activity */
+  storyBefore?: number;
 }
 
 export interface Mission {
@@ -63,6 +69,10 @@ export const MISSIONS: Mission[] = [
         type: "journal",
         title: "Strengths Mapping",
         subtitle: "Step 1 of 5",
+        intro:
+          "Every identity starts somewhere concrete. Before the bigger questions, let's begin with something grounded — what you're actually good at. Not what you've been told you're good at. What you've felt.",
+        warmUp:
+          "Think of one moment this week where you felt capable. Not perfect. Just: 'I can do this.' Hold that moment in your mind.",
         prompt:
           "Think about a moment recently when you felt genuinely good at something. What were you doing? What made it feel natural?",
         secondaryPrompt:
@@ -73,6 +83,8 @@ export const MISSIONS: Mission[] = [
         type: "values_picker",
         title: "Values Clarifier",
         subtitle: "Step 2 of 5",
+        intro:
+          "Strengths are about what you can do. Values are about what you care about. This step asks you to move from ability to belief — from 'I'm good at this' to 'this matters to me.' They're different things, and both shape who you are.",
         prompt:
           "From the list below, choose the five values that feel most like you — not the ones you think you should have, but the ones that are actually true.",
         valuesOptions: VALUES_LIST,
@@ -83,6 +95,11 @@ export const MISSIONS: Mission[] = [
         type: "journal",
         title: "The Mask Check",
         subtitle: "Step 3 of 5",
+        intro:
+          "Most people have a version of themselves they show the world and a version they keep private. That's normal. But if the gap between those two gets too wide, it starts to feel like you're losing track of which one is real. This step is about noticing the gap.",
+        warmUp:
+          "Think of three places you spend time — school, home, with close friends. In which one do you feel most relaxed? In which are you most careful about what you say?",
+        storyBefore: 0,
         prompt:
           "Think about who you are at school, at home, and with your closest friends. Where do you feel most like yourself? Where do you feel like you're performing?",
         secondaryPrompt:
@@ -93,6 +110,11 @@ export const MISSIONS: Mission[] = [
         type: "milestone_letter",
         title: "Identity Letter",
         subtitle: "Step 4 of 5 — Milestone",
+        intro:
+          "You've mapped your strengths, named your values, and looked at where you're real versus where you perform. Now comes the part that ties it together. This letter isn't a summary — it's an honest note to yourself about who you actually are right now. Not who you're becoming. Not who you hope to be. Just: you, now.",
+        warmUp:
+          "If you had to describe yourself to someone who'd never met you — not your achievements, not your appearance, just your inner self — what three things would you say?",
+        storyBefore: 1,
         prompt:
           "Write a short letter to yourself — not who you think you should be, but who you actually are right now. Be honest. Be kind.",
         secondaryPrompt:
@@ -104,6 +126,8 @@ export const MISSIONS: Mission[] = [
         type: "challenge",
         title: "Weekly Challenge",
         subtitle: "Step 5 of 5",
+        intro:
+          "Identity isn't just what you think about yourself — it's what you do. This final step asks you to take something you've discovered in this mission and act on it. Small is fine. Real is the point.",
         prompt:
           "Do one thing this week that feels like the real you — something you'd do even if nobody was watching.",
         isChallenge: true,

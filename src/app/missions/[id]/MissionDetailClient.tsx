@@ -93,180 +93,195 @@ export default function MissionDetailClient({
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
-        {/* Activities */}
+        {/* Journey — activities with stories woven in */}
         <div>
-          <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-            Activities
-          </h2>
-          <div className="space-y-2">
-            {mission.activities.map((activity, idx) => {
-              const completed = completedActivities.has(activity.id);
-              const isLocked = activity.locked;
-
-              // Find first incomplete unlocked activity
-              const firstIncompleteIdx = mission.activities.findIndex(
-                (a) => !a.locked && !completedActivities.has(a.id)
-              );
-              const isCurrent = idx === firstIncompleteIdx;
-
-              return (
-                <div key={activity.id}>
-                  {isLocked ? (
-                    // Locked state
-                    <div className="card p-4 opacity-50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full border-2 border-dashed border-surface-border flex items-center justify-center text-xs text-ink-muted">
-                          🔒
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-ink-muted">
-                            Coming soon
-                          </div>
-                          <div className="text-xs text-ink-muted mt-0.5">
-                            More activities being added
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <Link
-                      href={`/missions/${mission.id}/activities/${activity.id}`}
-                      className={cn(
-                        "card p-4 flex items-center gap-3 transition-all",
-                        completed
-                          ? "hover:shadow-soft"
-                          : isCurrent
-                          ? "ring-2 ring-teal hover:shadow-card"
-                          : "hover:shadow-soft opacity-70"
-                      )}
-                    >
-                      {/* Status indicator */}
-                      <div
-                        className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm",
-                          completed
-                            ? "bg-sage text-white"
-                            : isCurrent
-                            ? "bg-teal text-white"
-                            : "bg-surface-muted text-ink-muted border border-surface-border"
-                        )}
-                      >
-                        {completed ? (
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 14 14"
-                            fill="none"
-                          >
-                            <path
-                              d="M2.5 7L5.5 10L11.5 4"
-                              stroke="white"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : (
-                          <span>{idx + 1}</span>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "text-sm font-medium",
-                              completed ? "text-ink-muted line-through" : "text-ink"
-                            )}
-                          >
-                            {activity.title}
-                          </span>
-                          {activity.isMilestone && (
-                            <span className="text-xs text-gold bg-gold/10 px-1.5 py-0.5 rounded font-medium">
-                              ★ Milestone
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-ink-muted mt-0.5">
-                          {activity.subtitle}
-                        </div>
-                      </div>
-
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        className="text-ink-muted/40 flex-shrink-0"
-                      >
-                        <path
-                          d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </Link>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Stories */}
-        {stories.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                Stories for this mission
-              </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Your journey
+            </h2>
+            {stories.length > 0 && (
               <Link href="/stories" className="text-xs text-teal hover:underline">
                 All stories
               </Link>
-            </div>
-            <div className="space-y-2">
-              {stories.map((story) => (
-                <Link
-                  key={story.id}
-                  href={`/stories/${story.id}`}
-                  className="card p-4 flex items-center gap-3 hover:shadow-card transition-all group"
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-sm"
-                    style={{ background: mission.colour }}
-                  >
-                    📖
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-ink truncate">
-                      {story.title}
-                    </div>
-                    <div className="text-xs text-ink-muted mt-0.5 truncate">
-                      {story.teaser}
-                    </div>
-                  </div>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    className="text-ink-muted/40 flex-shrink-0"
-                  >
-                    <path
-                      d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </Link>
-              ))}
-            </div>
+            )}
           </div>
-        )}
+
+          {/* Build a map: which story index appears before which activity index */}
+          {(() => {
+            const storySlots = new Map<number, number>();
+            mission.activities.forEach((a, idx) => {
+              if (a.storyBefore !== undefined && stories[a.storyBefore]) {
+                storySlots.set(idx, a.storyBefore);
+              }
+            });
+
+            const firstIncompleteIdx = mission.activities.findIndex(
+              (a) => !a.locked && !completedActivities.has(a.id)
+            );
+
+            return (
+              <div className="space-y-2">
+                {mission.activities.map((activity, idx) => {
+                  const completed = completedActivities.has(activity.id);
+                  const isLocked = activity.locked;
+                  const isCurrent = idx === firstIncompleteIdx;
+                  const storyIdx = storySlots.get(idx);
+                  const story = storyIdx !== undefined ? stories[storyIdx] : null;
+
+                  return (
+                    <div key={activity.id}>
+                      {/* Story card woven in before this activity */}
+                      {story && (
+                        <Link
+                          href={`/stories/${story.id}`}
+                          className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl border border-dashed transition-all hover:border-solid hover:shadow-soft group"
+                          style={{ borderColor: `${mission.colour}40`, background: `${mission.colour}06` }}
+                        >
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs"
+                            style={{ background: `${mission.colour}18` }}
+                          >
+                            📖
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: mission.colour }}>
+                              Read first
+                            </div>
+                            <div className="text-sm font-medium text-ink truncate">
+                              {story.title}
+                            </div>
+                            <div className="text-xs text-ink-muted mt-0.5 truncate">
+                              {story.teaser}
+                            </div>
+                          </div>
+                          <svg
+                            width="14" height="14" viewBox="0 0 14 14" fill="none"
+                            className="text-ink-muted/40 flex-shrink-0"
+                          >
+                            <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </Link>
+                      )}
+
+                      {isLocked ? (
+                        <div className="card p-4 opacity-50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full border-2 border-dashed border-surface-border flex items-center justify-center text-xs text-ink-muted">
+                              🔒
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-ink-muted">
+                                Coming soon
+                              </div>
+                              <div className="text-xs text-ink-muted mt-0.5">
+                                More activities being added
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/missions/${mission.id}/activities/${activity.id}`}
+                          className={cn(
+                            "card p-4 flex items-center gap-3 transition-all",
+                            completed
+                              ? "hover:shadow-soft"
+                              : isCurrent
+                              ? "ring-2 ring-teal hover:shadow-card"
+                              : "hover:shadow-soft opacity-70"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm",
+                              completed
+                                ? "bg-sage text-white"
+                                : isCurrent
+                                ? "bg-teal text-white"
+                                : "bg-surface-muted text-ink-muted border border-surface-border"
+                            )}
+                          >
+                            {completed ? (
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            ) : (
+                              <span>{idx + 1}</span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("text-sm font-medium", completed ? "text-ink-muted line-through" : "text-ink")}>
+                                {activity.title}
+                              </span>
+                              {activity.isMilestone && (
+                                <span className="text-xs text-gold bg-gold/10 px-1.5 py-0.5 rounded font-medium">
+                                  ★ Milestone
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-ink-muted mt-0.5">
+                              {activity.subtitle}
+                            </div>
+                          </div>
+
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-muted/40 flex-shrink-0">
+                            <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Remaining stories not woven into activities */}
+        {(() => {
+          const usedStoryIndices = new Set(
+            mission.activities.map((a) => a.storyBefore).filter((i): i is number => i !== undefined)
+          );
+          const remainingStories = stories.filter((_, i) => !usedStoryIndices.has(i));
+          if (remainingStories.length === 0) return null;
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  More stories
+                </h2>
+                <Link href="/stories" className="text-xs text-teal hover:underline">
+                  All stories
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {remainingStories.map((story) => (
+                  <Link
+                    key={story.id}
+                    href={`/stories/${story.id}`}
+                    className="card p-4 flex items-center gap-3 hover:shadow-card transition-all"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-sm"
+                      style={{ background: mission.colour }}
+                    >
+                      📖
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-ink truncate">{story.title}</div>
+                      <div className="text-xs text-ink-muted mt-0.5 truncate">{story.teaser}</div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-muted/40 flex-shrink-0">
+                      <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </AppShell>
   );
