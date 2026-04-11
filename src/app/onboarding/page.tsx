@@ -35,51 +35,51 @@ const WHY_OPTIONS = [
 const QUICK_VALUES = [
   {
     label: "Courage",
-    description: "Doing what's right or necessary even when it scares you — speaking up, taking risks, being vulnerable.",
+    description: "Acting despite fear, not in the absence of it. Whether it's speaking up in a room that disagrees with you, trying something you might fail at, or letting someone actually see how you feel.",
   },
   {
     label: "Kindness",
-    description: "Choosing to be warm and generous with others, especially when it costs you something.",
+    description: "Choosing warmth and generosity, especially when it costs you something. It shows up in the small moments: the text you didn't have to send, the extra patience, the willingness to put someone else first.",
   },
   {
     label: "Honesty",
-    description: "Telling the truth — to others and to yourself — even when it's uncomfortable.",
+    description: "Telling the truth — to others and to yourself. It's more than not lying. It's the hard feedback you give, the uncomfortable things you admit, and not pretending everything's fine when it isn't.",
   },
   {
     label: "Creativity",
-    description: "Finding new ways to express yourself, solve problems, or see the world differently.",
+    description: "Finding new ways to see, solve, and express. You don't just accept the obvious answer — you ask what else is possible, and you're willing to make something imperfect rather than make nothing at all.",
   },
   {
     label: "Growth",
-    description: "Constantly learning, improving, and pushing yourself beyond where you are now.",
+    description: "The belief that where you are now isn't where you have to stay. You're drawn to discomfort, feedback, and challenge — not because they're fun, but because they're how you actually move forward.",
   },
   {
     label: "Family",
-    description: "The people who are closest to you — by blood or by bond — are at the centre of what you care about.",
+    description: "The people closest to you — by blood or by bond — are at the centre of what you care about. Their wellbeing matters deeply, and your relationships with them shape a lot of who you are.",
   },
   {
     label: "Humour",
-    description: "Bringing lightness and laughter to life, and finding the funny in even the hard stuff.",
+    description: "Finding the lightness in life, even in difficult moments. You use laughter to connect, to cope, and to keep perspective — and you believe that not taking everything too seriously is a kind of wisdom.",
   },
   {
     label: "Compassion",
-    description: "Genuinely feeling with others and being moved to help — not just feeling sorry, but caring deeply.",
+    description: "Feeling what others feel, and being moved to do something about it. Not sympathy from a distance — a genuine pull toward people who are struggling, and the impulse to actually help.",
   },
   {
     label: "Curiosity",
-    description: "A hunger to understand — people, ideas, the world. You ask why, and you actually want to know.",
+    description: "A genuine hunger to understand — people, ideas, how things work, why the world is the way it is. You ask questions not to seem smart, but because you actually want to know the answers.",
   },
   {
     label: "Resilience",
-    description: "Bouncing back from hard things. Not pretending they didn't hurt — but not staying down either.",
+    description: "Getting back up — not because the hard thing didn't hurt, but because you don't let it define you. You bend, you feel it fully, and then you find a way through. Again and again.",
   },
   {
     label: "Fairness",
-    description: "Believing everyone deserves to be treated equally and standing up when they're not.",
+    description: "The conviction that everyone deserves to be treated with equal dignity. When you see unfairness, it bothers you — and you believe it's worth speaking up, even when it isn't your fight.",
   },
   {
     label: "Authenticity",
-    description: "Being real — showing up as yourself rather than who you think people want you to be.",
+    description: "Showing up as yourself, not a version shaped by what others expect. It means saying what you actually think, living by what you actually believe, and refusing to perform a role that isn't yours.",
   },
 ];
 
@@ -311,15 +311,15 @@ export default function OnboardingPage() {
               })}
             </div>
 
-            {/* Tooltip / description area */}
-            <div className="mb-4 min-h-[3rem] flex items-start">
+            {/* Tooltip / description area — fixed height prevents layout shift */}
+            <div className="mb-4 h-[5.5rem] flex items-start">
               {hoveredValueData ? (
-                <div className="w-full rounded-xl bg-teal/5 border border-teal/20 px-4 py-3 text-sm text-ink-muted animate-fade-up">
+                <div className="w-full rounded-xl bg-teal/5 border border-teal/20 px-4 py-3 text-sm text-ink-muted">
                   <span className="font-semibold text-ink">{hoveredValueData.label}: </span>
                   {hoveredValueData.description}
                 </div>
               ) : (
-                <p className="text-xs text-ink-muted/50 px-1">Hover over a value to learn more</p>
+                <p className="text-xs text-ink-muted/50 px-1 pt-1">Hover over a value to learn more</p>
               )}
             </div>
 

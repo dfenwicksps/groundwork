@@ -4,15 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import AppShell from "@/components/layout/AppShell";
+import { cn } from "@/lib/utils";
+
+const ALL_VALUES = [
+  "Courage",
+  "Kindness",
+  "Honesty",
+  "Creativity",
+  "Growth",
+  "Family",
+  "Humour",
+  "Compassion",
+  "Curiosity",
+  "Resilience",
+  "Fairness",
+  "Authenticity",
+];
 
 export default function SettingsClient({
   userId,
   email,
   displayName,
+  savedValues,
 }: {
   userId: string;
   email: string;
   displayName: string;
+  savedValues: string[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -24,6 +42,36 @@ export default function SettingsClient({
   const [saved, setSaved] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
+
+  const [selectedValues, setSelectedValues] = useState<string[]>(savedValues);
+  const [savingValues, setSavingValues] = useState(false);
+  const [savedValues2, setSavedValues2] = useState(false);
+  const [editingValues, setEditingValues] = useState(false);
+
+  function toggleValue(val: string) {
+    if (selectedValues.includes(val)) {
+      setSelectedValues(selectedValues.filter((v) => v !== val));
+    } else if (selectedValues.length < 3) {
+      setSelectedValues([...selectedValues, val]);
+    }
+  }
+
+  async function handleSaveValues() {
+    setSavingValues(true);
+    await db
+      .from("onboarding_results")
+      .update({ values: selectedValues })
+      .eq("user_id", userId);
+    setSavingValues(false);
+    setSavedValues2(true);
+    setEditingValues(false);
+    setTimeout(() => setSavedValues2(false), 2000);
+  }
+
+  function handleCancelValues() {
+    setSelectedValues(savedValues);
+    setEditingValues(false);
+  }
 
   async function handleSaveName() {
     setSaving(true);
@@ -97,8 +145,86 @@ export default function SettingsClient({
           </div>
         </div>
 
+        {/* Your values */}
+        <div data-animate="3" className="card p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold text-ink">Your values</h2>
+            {!editingValues && (
+              <button
+                onClick={() => setEditingValues(true)}
+                className="text-sm text-teal hover:underline"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-ink-muted mb-4">
+            The three values you chose when you started. You can update them any time.
+          </p>
+
+          {!editingValues ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedValues.length > 0 ? (
+                selectedValues.map((val) => (
+                  <span
+                    key={val}
+                    className="px-3 py-1.5 rounded-lg bg-navy text-white text-sm font-medium"
+                  >
+                    {val}
+                  </span>
+                ))
+              ) : (
+                <p className="text-sm text-ink-muted/60 italic">No values selected yet.</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {ALL_VALUES.map((val) => {
+                  const selected = selectedValues.includes(val);
+                  const disabled = !selected && selectedValues.length >= 3;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => toggleValue(val)}
+                      disabled={disabled}
+                      className={cn(
+                        "p-3 rounded-xl text-sm font-medium transition-all border",
+                        selected
+                          ? "bg-navy text-white border-navy"
+                          : disabled
+                          ? "bg-surface-muted text-ink-muted/50 border-surface-border cursor-not-allowed"
+                          : "bg-white text-ink border-surface-border hover:border-navy/30"
+                      )}
+                    >
+                      {val}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-ink-muted mb-4">{selectedValues.length} of 3 selected</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelValues}
+                  className="btn btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveValues}
+                  disabled={savingValues || selectedValues.length !== 3}
+                  className="btn btn-primary flex-[2]"
+                >
+                  {savingValues ? "Saving…" : savedValues2 ? "Saved ✓" : "Save values"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Account actions */}
-        <div data-animate="3" className="card p-6 space-y-3">
+        <div data-animate="4" className="card p-6 space-y-3">
           <h2 className="font-semibold text-ink">Account</h2>
           <button
             onClick={handleSignOut}
@@ -110,7 +236,7 @@ export default function SettingsClient({
 
         {/* Danger zone */}
         <div
-          data-animate="4"
+          data-animate="5"
           className="rounded-xl p-6 border border-red-100 bg-red-50/30"
         >
           <h2 className="font-semibold text-red-800 mb-2">Danger zone</h2>
@@ -164,7 +290,7 @@ export default function SettingsClient({
         </div>
 
         {/* Privacy note */}
-        <div data-animate="5" className="text-xs text-ink-muted/60 text-center pb-4">
+        <div data-animate="6" className="text-xs text-ink-muted/60 text-center pb-4">
           Groundwork is not a therapy replacement. All journal content is
           private and encrypted. We never sell your data.
         </div>
