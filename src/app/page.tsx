@@ -31,14 +31,6 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-16 pb-24 text-center">
-        <div
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal/10 text-teal text-sm font-medium mb-8"
-          data-animate="1"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-teal inline-block"></span>
-          For ages 13–18
-        </div>
-
         <h1
           className="text-5xl md:text-6xl lg:text-7xl text-navy mb-6 max-w-3xl mx-auto"
           style={{
@@ -84,9 +76,7 @@ export default function LandingPage() {
           className="mt-8 text-sm text-ink-muted/70 max-w-md mx-auto"
           data-animate="5"
         >
-          Groundwork is a personal growth tool, not a therapy service. If
-          you&apos;re going through something hard, please talk to someone you
-          trust.
+          This isn&apos;t a therapy app. If something feels too heavy to carry alone, please talk to someone you trust.
         </p>
       </section>
 
@@ -103,8 +93,7 @@ export default function LandingPage() {
             Four missions. One question each.
           </h2>
           <p className="text-ink-muted max-w-lg mx-auto">
-            You move through each mission at your own pace, with reflective
-            activities and a real-world challenge each week.
+            You move through each mission at your own pace — about 15 minutes a week. Reflective activities, real stories, and one challenge to try in the world.
           </p>
         </div>
 

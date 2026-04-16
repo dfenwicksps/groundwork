@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { MISSIONS } from "@/lib/missions";
-import { formatRelativeDate, truncate } from "@/lib/utils";
+import { formatRelativeDate, truncate, cn } from "@/lib/utils";
 import type {
   UserProfile,
   MissionProgress,
@@ -12,12 +12,30 @@ import type {
 } from "@/types/database";
 import AppShell from "@/components/layout/AppShell";
 
+type RevisitEntry = {
+  id: string;
+  mission_id: number;
+  activity_id: string;
+  prompt: string;
+  response: string;
+  created_at: string;
+};
+
+type NudgeActivity = {
+  missionId: number;
+  activityId: string;
+  title: string;
+  sentenceStarter?: string;
+};
+
 interface Props {
   profile: UserProfile;
   progress: MissionProgress[];
   challenge: Challenge | null;
   recentEntries: Partial<JournalEntry>[];
   supportCircle: SupportContact[];
+  revisitEntry: RevisitEntry | null;
+  nudgeActivity: NudgeActivity | null;
 }
 
 function getMissionProgress(
@@ -40,8 +58,20 @@ const MISSION_ACTIVITY_LABELS: Record<string, string> = {
   "identity-letter": "Identity Letter",
   "weekly-challenge": "Weekly Challenge",
   "what-matters": "What Matters",
+  "contribution-map": "The Contribution Map",
+  "the-other-side": "The Other Side",
+  "commitment-statement": "Commitment Statement",
+  "purpose-challenge": "Weekly Challenge",
   belonging: "Where You Belong",
+  "fitting-in-vs-belonging": "Fitting In vs. Belonging",
+  "across-the-gap": "Across the Gap",
+  "people-who-shaped-you": "The People Who Shaped You",
+  "connection-challenge": "Weekly Challenge",
   "future-self": "Future Self",
+  "digital-self": "Digital Self",
+  "the-through-line": "The Through-Line",
+  "meaning-letter": "A Life Worth Building",
+  "meaning-challenge": "Weekly Challenge",
 };
 
 export default function DashboardClient({
@@ -50,6 +80,8 @@ export default function DashboardClient({
   challenge,
   recentEntries,
   supportCircle,
+  revisitEntry,
+  nudgeActivity,
 }: Props) {
   const firstName = profile.display_name?.split(" ")[0] || "there";
   const hour = new Date().getHours();
@@ -145,6 +177,95 @@ export default function DashboardClient({
           </div>
         </div>
 
+        {/* Revisit prompt — Evaluation Cycle */}
+        {revisitEntry && (
+          <div data-animate="3">
+            <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+              Time to check back in
+            </h2>
+            <Link
+              href={`/revisit/${revisitEntry.id}`}
+              className={cn(
+                "card p-5 flex items-start gap-4 hover:shadow-card transition-all group",
+                "border-l-4"
+              )}
+              style={{ borderLeftColor: "#4A7C59" }}
+            >
+              <div className="w-9 h-9 rounded-xl bg-sage/10 flex items-center justify-center text-lg flex-shrink-0">
+                ↩
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-ink mb-1">
+                  {MISSION_ACTIVITY_LABELS[revisitEntry.activity_id] || revisitEntry.activity_id}
+                </p>
+                <p className="text-xs text-ink-muted mb-2">
+                  Written {formatRelativeDate(revisitEntry.created_at)} · Does it still feel true?
+                </p>
+                <p className="text-xs text-ink-muted/70 italic line-clamp-2">
+                  &ldquo;{truncate(revisitEntry.response, 100)}&rdquo;
+                </p>
+              </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className="text-ink-muted/40 group-hover:text-ink-muted flex-shrink-0 mt-1 transition-colors"
+              >
+                <path
+                  d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          </div>
+        )}
+
+        {/* Avoidance nudge — gentle re-entry when inactive 10+ days */}
+        {nudgeActivity && (
+          <div data-animate="3">
+            <Link
+              href={`/missions/${nudgeActivity.missionId}/activities/${nudgeActivity.activityId}`}
+              className="card p-5 flex items-start gap-4 hover:shadow-card transition-all group border border-dashed border-surface-border hover:border-navy/20"
+            >
+              <div className="w-9 h-9 rounded-xl bg-navy/5 flex items-center justify-center text-lg flex-shrink-0">
+                ✦
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-ink mb-0.5">
+                  {nudgeActivity.title} — whenever you&apos;re ready
+                </p>
+                <p className="text-xs text-ink-muted mb-2">
+                  Your next step is here. No pressure on timing.
+                </p>
+                {nudgeActivity.sentenceStarter && (
+                  <p className="text-xs text-ink-muted/60 italic">
+                    Try starting with: &ldquo;{nudgeActivity.sentenceStarter}&rdquo;
+                  </p>
+                )}
+              </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className="text-ink-muted/30 group-hover:text-ink-muted flex-shrink-0 mt-1 transition-colors"
+              >
+                <path
+                  d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          </div>
+        )}
+
         {/* Active Challenge */}
         {challenge && (
           <div data-animate="3">
@@ -186,10 +307,11 @@ export default function DashboardClient({
               return (
                 <Link
                   key={mission.id}
-                  href={`/missions/${mission.id}`}
-                  className={`card p-4 transition-all hover:shadow-card group ${
-                    isLocked ? "opacity-60 pointer-events-none" : ""
+                  href={isLocked ? "#" : `/missions/${mission.id}`}
+                  className={`card p-4 transition-all group ${
+                    isLocked ? "pointer-events-none" : "hover:shadow-card"
                   }`}
+                  aria-disabled={isLocked}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div
@@ -209,27 +331,32 @@ export default function DashboardClient({
                       </span>
                     )}
                     {isLocked && (
-                      <span className="text-xs text-ink-muted">🔒</span>
+                      <span className="text-xs text-ink-muted/50">Next</span>
                     )}
                   </div>
                   <div
-                    className="text-sm font-semibold text-navy mb-0.5"
+                    className={`text-sm font-semibold mb-0.5 ${isLocked ? "text-ink-muted/50" : "text-navy"}`}
                     style={{ fontFamily: "'Fraunces', serif" }}
                   >
                     {mission.title}
                   </div>
-                  <div className="text-xs text-ink-muted/70 mb-0.5">
+                  <div className={`text-xs mb-0.5 ${isLocked ? "text-ink-muted/40" : "text-ink-muted/70"}`}>
                     {mission.phaseLabel}
                   </div>
-                  <div className="text-xs text-ink-muted mb-3 line-clamp-1" style={{ fontStyle: "italic" }}>
+                  <div className={`text-xs mb-3 line-clamp-1 ${isLocked ? "text-ink-muted/40" : "text-ink-muted"}`} style={{ fontStyle: "italic" }}>
                     {mission.question}
                   </div>
-                  <div className="progress-bar">
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${mProgress}%` }}
-                    />
-                  </div>
+                  {!isLocked && (
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${mProgress}%` }}
+                      />
+                    </div>
+                  )}
+                  {isLocked && (
+                    <div className="h-1.5 rounded-full bg-surface-border/50" />
+                  )}
                 </Link>
               );
             })}

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, parseReflection } from "@/lib/utils";
+import { type ProcessingStyle, getProcessingStyle } from "@/lib/processingStyle";
 import type { Mission, Activity } from "@/lib/missions";
-import { VALUES_WITH_DEFINITIONS } from "@/lib/missions";
+import { VALUES_WITH_DEFINITIONS, MISSIONS } from "@/lib/missions";
 import type { JournalEntry, Challenge } from "@/types/database";
 import AppShell from "@/components/layout/AppShell";
 
@@ -54,6 +55,16 @@ export default function ActivityClient({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const entryIdRef = useRef<string | null>(existingEntry?.id || null);
+
+  // Processing style — read from localStorage after mount (SSR-safe)
+  const [style, setStyle] = useState<ProcessingStyle | null>(null);
+  const [whyExpanded, setWhyExpanded] = useState(false);
+  const [showAllSteps, setShowAllSteps] = useState(false);
+  const whyId = useId();
+
+  useEffect(() => {
+    setStyle(getProcessingStyle());
+  }, []);
 
   // ─── Autosave every 30 seconds ───────────────────────────────────────────────
   const autoSave = useCallback(async () => {
@@ -162,6 +173,23 @@ export default function ActivityClient({
       activity_id: activity.id,
     });
 
+    // Advance active_mission when the last activity of this mission is completed
+    const totalActivities = mission.activities.filter((a) => !a.locked).length;
+    const { count } = await db
+      .from("mission_progress")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("mission_id", mission.id);
+    const nextMissionId = mission.id + 1;
+    const nextMissionExists = MISSIONS.some((m) => m.id === nextMissionId);
+    if (count !== null && count >= totalActivities && nextMissionExists) {
+      await db
+        .from("users")
+        .update({ active_mission: nextMissionId })
+        .eq("id", userId)
+        .lt("active_mission", nextMissionId);
+    }
+
     // Create challenge record
     if (activity.type === "challenge") {
       await db.from("challenges").insert({
@@ -222,8 +250,7 @@ export default function ActivityClient({
   const canSubmitJournal = response.trim().length > 10;
   const canSubmitValues =
     activity.type === "values_picker" &&
-    selectedValues.length === (activity.valuesCount || 5) &&
-    selectedValues.every((v) => valueReasons[v]?.trim());
+    selectedValues.length === (activity.valuesCount || 5);
 
   const showDebrief =
     activity.type === "challenge" &&
@@ -270,6 +297,15 @@ export default function ActivityClient({
             <span className="inline-flex items-center gap-1 text-xs text-gold bg-gold/10 px-2 py-1 rounded-full">
               ★ Milestone entry
             </span>
+          )}
+          {activity.timeEstimate && (
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-ink-muted">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M6 3.5V6l2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              {activity.timeEstimate}
+            </div>
           )}
         </div>
 
@@ -330,6 +366,39 @@ export default function ActivityClient({
         {/* ─── JOURNAL / MILESTONE LETTER ─── */}
         {(activity.type === "journal" || activity.type === "milestone_letter") && (
           <div data-animate="2">
+            {/* Informational: "Why this works" expandable — shown before the prompt */}
+            {!submitted && style === "informational" && activity.whyItMatters && (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  aria-expanded={whyExpanded}
+                  aria-controls={whyId}
+                  onClick={() => setWhyExpanded((v) => !v)}
+                  className="flex items-center gap-2 text-xs font-semibold text-teal hover:text-teal/80 transition-colors w-full text-left"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    className={cn("transition-transform flex-shrink-0", whyExpanded && "rotate-90")}
+                  >
+                    <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  The idea behind this
+                </button>
+                {whyExpanded && (
+                  <div
+                    id={whyId}
+                    className="mt-2 px-4 py-3 rounded-xl text-xs text-ink-muted leading-relaxed"
+                    style={{ background: "rgba(46,125,140,0.04)", borderLeft: "2px solid rgba(46,125,140,0.25)" }}
+                  >
+                    {activity.whyItMatters}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Prompt card — shows scaffolding steps if available, otherwise main prompt */}
             <div className="card p-5 mb-4">
               {activity.scaffoldingSteps && activity.scaffoldingSteps.length > 0 ? (
@@ -337,8 +406,17 @@ export default function ActivityClient({
                   <p className="text-sm text-ink-muted mb-3 leading-relaxed">
                     {activity.prompt}
                   </p>
+                  {/* Normative: explicit "one at a time" heading */}
+                  {style === "normative" && (
+                    <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+                      Take these one at a time:
+                    </p>
+                  )}
                   <ol className="space-y-2">
-                    {activity.scaffoldingSteps.map((step, i) => (
+                    {(style === "diffuse-avoidant" && !showAllSteps
+                      ? activity.scaffoldingSteps.slice(0, 1)
+                      : activity.scaffoldingSteps
+                    ).map((step, i) => (
                       <li key={i} className="flex gap-3">
                         <span
                           className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold text-white mt-0.5"
@@ -350,6 +428,18 @@ export default function ActivityClient({
                       </li>
                     ))}
                   </ol>
+                  {/* Diffuse-Avoidant: progressive disclosure of remaining steps */}
+                  {style === "diffuse-avoidant" &&
+                    !showAllSteps &&
+                    activity.scaffoldingSteps.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSteps(true)}
+                        className="mt-3 text-xs text-ink-muted hover:text-ink transition-colors"
+                      >
+                        Show the other prompts when you&apos;re ready →
+                      </button>
+                    )}
                 </div>
               ) : (
                 <div>
@@ -365,23 +455,49 @@ export default function ActivityClient({
 
             {submitted ? (
               <div>
+                <div className="text-center py-6 mb-2" data-animate="1">
+                  <div className="text-3xl mb-2">✓</div>
+                  <p className="text-sm font-medium text-navy">Saved.</p>
+                  <p className="text-xs text-ink-muted mt-1">That's one more thing you know about yourself.</p>
+                </div>
                 <div className="card p-5 mb-4 bg-surface-muted">
                   <p className="text-sm text-ink-muted mb-2 font-medium">Your reflection</p>
                   <p className="text-ink leading-relaxed whitespace-pre-wrap">{response}</p>
                 </div>
 
-                {aiReflection && (
-                  <div
-                    className="rounded-xl p-5 mb-4 border"
-                    style={{ background: "rgba(46,125,140,0.04)", borderColor: "rgba(46,125,140,0.2)" }}
-                    data-animate="3"
-                  >
-                    <div className="text-xs font-semibold text-teal mb-2 uppercase tracking-wide">
-                      Something to sit with
+                {aiReflection && (() => {
+                  const parsed = parseReflection(aiReflection);
+                  if (!parsed) return null;
+                  return (
+                    <div
+                      className="rounded-xl p-5 mb-4 border"
+                      style={{ background: "rgba(46,125,140,0.04)", borderColor: "rgba(46,125,140,0.2)" }}
+                      data-animate="3"
+                    >
+                      <div className="text-xs font-semibold text-teal mb-3 uppercase tracking-wide">
+                        Something to sit with
+                      </div>
+                      {parsed.type === "tricheck" ? (
+                        <div className="space-y-3">
+                          {([
+                            { label: "What you believe", q: parsed.tricheck.conceptual },
+                            { label: "Something to try", q: parsed.tricheck.practical },
+                            { label: "Who gets it",      q: parsed.tricheck.collective },
+                          ] as const).map(({ label, q }) => (
+                            <div key={label} className="flex gap-3">
+                              <span className="text-[10px] font-semibold text-teal/50 uppercase tracking-wide w-[5.5rem] flex-shrink-0 pt-0.5 leading-tight">
+                                {label}
+                              </span>
+                              <p className="text-sm text-ink leading-relaxed">{q}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-ink leading-relaxed text-sm">{parsed.text}</p>
+                      )}
                     </div>
-                    <p className="text-ink leading-relaxed text-sm">{aiReflection}</p>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div className="flex gap-3">
                   <Link href={`/missions/${mission.id}`} className="btn btn-secondary flex-1">
@@ -524,7 +640,7 @@ export default function ActivityClient({
                 {selectedValues.length > 0 && (
                   <div className="space-y-4 mb-5">
                     <p className="text-sm font-medium text-ink">
-                      For each value, write one sentence about why it matters to you:
+                      Optionally, add a sentence about why each one matters to you:
                     </p>
                     {selectedValues.map((val) => (
                       <div key={val}>
@@ -537,7 +653,7 @@ export default function ActivityClient({
                         <input
                           type="text"
                           className="input text-sm"
-                          placeholder={`Why does ${val} matter to you personally?`}
+                          placeholder={`What does ${val} mean to you? (optional)`}
                           value={valueReasons[val] || ""}
                           onChange={(e) =>
                             setValueReasons({ ...valueReasons, [val]: e.target.value })
@@ -583,9 +699,9 @@ export default function ActivityClient({
                   </div>
                 ) : (
                   <div>
-                    <p className="font-medium text-ink mb-1">Did you do it? What happened?</p>
+                    <p className="font-medium text-ink mb-1">What happened? What did you notice?</p>
                     <p className="text-sm text-ink-muted mb-4">
-                      What did it feel like to do something that was genuinely you?
+                      It&apos;s okay if it didn&apos;t go perfectly, or if you only partly did it. What did the experience tell you?
                     </p>
                     <textarea
                       className="journal-textarea mb-3"

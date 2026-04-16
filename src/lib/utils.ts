@@ -36,3 +36,32 @@ export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + "…";
 }
+
+export type TriCheck = {
+  conceptual: string;
+  practical: string;
+  collective: string;
+};
+
+export type ParsedReflection =
+  | { type: "tricheck"; tricheck: TriCheck }
+  | { type: "plain"; text: string };
+
+export function parseReflection(text: string | null | undefined): ParsedReflection | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.conceptual === "string" &&
+      typeof parsed.practical === "string" &&
+      typeof parsed.collective === "string"
+    ) {
+      return { type: "tricheck", tricheck: parsed as TriCheck };
+    }
+  } catch {
+    // Not JSON — treat as legacy plain string
+  }
+  return { type: "plain", text };
+}

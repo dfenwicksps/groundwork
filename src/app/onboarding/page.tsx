@@ -4,6 +4,41 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { type ProcessingStyle, setProcessingStyle, tallyStyle } from "@/lib/processingStyle";
+
+const STYLE_QUESTIONS: {
+  id: string;
+  question: string;
+  options: { label: string; style: ProcessingStyle }[];
+}[] = [
+  {
+    id: "q1",
+    question: "When you're working something out...",
+    options: [
+      { label: "I like to dig in and understand it from all angles", style: "informational" },
+      { label: "I find it easier with clear steps or someone to guide me", style: "normative" },
+      { label: "I usually need to sit with it for a while first", style: "diffuse-avoidant" },
+    ],
+  },
+  {
+    id: "q2",
+    question: "Starting new things feels...",
+    options: [
+      { label: "Interesting — I want to know why I'm doing it", style: "informational" },
+      { label: "Better with structure — I like knowing the plan", style: "normative" },
+      { label: "Hard sometimes — I can struggle to get going", style: "diffuse-avoidant" },
+    ],
+  },
+  {
+    id: "q3",
+    question: "Be honest — coming here today...",
+    options: [
+      { label: "I'm genuinely curious to understand myself better", style: "informational" },
+      { label: "I'm hoping there's a clear process I can follow", style: "normative" },
+      { label: "Part of me isn't sure I'm ready to start", style: "diffuse-avoidant" },
+    ],
+  },
+];
 
 const WHY_OPTIONS = [
   {
@@ -94,6 +129,7 @@ export default function OnboardingPage() {
   // Step 1
   const [name, setName] = useState("");
   const [whyHere, setWhyHere] = useState("");
+  const [styleAnswers, setStyleAnswers] = useState<Record<string, ProcessingStyle>>({});
 
   // Step 2
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -119,6 +155,12 @@ export default function OnboardingPage() {
     const db = createClient() as any;
     const { data: { user } } = await db.auth.getUser();
     if (!user) return;
+
+    // Detect and persist processing style from the 3 style questions
+    const votes = Object.values(styleAnswers);
+    if (votes.length > 0) {
+      setProcessingStyle(tallyStyle(votes));
+    }
 
     // Update display name
     if (name) {
@@ -258,9 +300,45 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            {/* Style detection questions — appear after "why here" is chosen */}
+            {whyHere && (
+              <div className="space-y-5 pt-2 border-t border-surface-border mt-2">
+                <p className="text-xs text-ink-muted pt-3">
+                  Two more quick ones — helps us tailor how things are presented.
+                </p>
+                {STYLE_QUESTIONS.map((q) => (
+                  <div key={q.id}>
+                    <label className="block text-sm font-medium text-ink mb-2">
+                      {q.question}
+                    </label>
+                    <div className="space-y-2">
+                      {q.options.map((opt) => (
+                        <button
+                          key={opt.style}
+                          type="button"
+                          onClick={() =>
+                            setStyleAnswers((prev) => ({ ...prev, [q.id]: opt.style }))
+                          }
+                          className={cn(
+                            "w-full text-left px-4 py-3 rounded-xl border transition-all text-sm",
+                            styleAnswers[q.id] === opt.style
+                              ? "border-teal bg-teal/5 ring-1 ring-teal text-ink"
+                              : "border-surface-border bg-white text-ink-muted hover:border-teal/40"
+                          )}
+                          style={{ borderWidth: "1.5px" }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button
               onClick={() => setStep(2)}
-              disabled={!whyHere}
+              disabled={!whyHere || Object.keys(styleAnswers).length < STYLE_QUESTIONS.length}
               className="btn btn-primary w-full mt-6"
             >
               Next
@@ -362,22 +440,15 @@ export default function OnboardingPage() {
               className="text-2xl text-navy mb-2"
               style={{ fontFamily: "'Fraunces', serif", fontWeight: 400 }}
             >
-              One important question.
+              One last thing.
             </h1>
-            <p className="text-ink-muted text-sm mb-2">
-              Groundwork is about honest reflection. Sometimes that can bring up
-              hard feelings.
-            </p>
-            <p className="text-sm text-ink mb-6 font-medium">
-              Is there a trusted adult in your life you could talk to if things
-              get difficult?
+            <p className="text-ink-muted text-sm mb-6">
+              Groundwork works best alongside real people. If you have someone you could talk to when things get heavy — a parent, a coach, an older sibling, anyone — it&apos;s worth keeping them in mind.
             </p>
 
-            <div className="bg-teal/5 border border-teal/20 rounded-xl p-4 mb-6">
-              <p className="text-sm text-teal-dark/80">
-                This could be a parent, older sibling, teacher, coach, or
-                anyone you trust. Adding their name is optional — it&apos;s
-                just a reminder that real people matter more than any app.
+            <div className="bg-surface-muted rounded-xl p-4 mb-6 border border-surface-border">
+              <p className="text-sm text-ink-muted">
+                This is completely optional — it just gives you someone to think of if you ever need it. You can add or change this any time.
               </p>
             </div>
 

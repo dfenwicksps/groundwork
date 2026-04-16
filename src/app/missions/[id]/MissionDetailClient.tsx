@@ -219,7 +219,7 @@ export default function MissionDetailClient({
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className={cn("text-sm font-medium", completed ? "text-ink-muted line-through" : "text-ink")}>
                                 {activity.title}
                               </span>
@@ -229,8 +229,11 @@ export default function MissionDetailClient({
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-ink-muted mt-0.5">
-                              {activity.subtitle}
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-ink-muted">{activity.subtitle}</span>
+                              {activity.timeEstimate && !completed && (
+                                <span className="text-xs text-ink-muted/50">· {activity.timeEstimate}</span>
+                              )}
                             </div>
                           </div>
 

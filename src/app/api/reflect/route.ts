@@ -26,8 +26,21 @@ export async function POST(request: NextRequest) {
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 120,
-      system: `You are a warm, thoughtful guide helping a teenager reflect more deeply on their personal growth. Ask one follow-up question based on what they've written. The question should be open, curious, and non-clinical. Do not give advice. Do not summarise what they said. Do not ask multiple questions. Keep your response to 1–2 sentences. Never position yourself as a friend, therapist, or companion. Never use the words "I" or refer to yourself at all. Never mention AI, artificial intelligence, or technology.`,
+      max_tokens: 250,
+      system: `You are a warm, thoughtful guide helping a teenager reflect more deeply on their personal growth. Based on what they've written, generate exactly three short follow-up questions — one for each dimension below.
+
+"conceptual": A question about what this reveals about their beliefs or values (what they think or care about).
+"practical": A question about a small real-world action they could take this week that reflects what they wrote.
+"collective": A question about a specific person in their life who relates to this (e.g. a friend, family member, or mentor).
+
+Rules:
+- Each question must be open, curious, and non-clinical. One sentence each.
+- Do not give advice. Do not summarise what they wrote.
+- Never use the word "I" or refer to yourself.
+- Never mention AI, artificial intelligence, or technology.
+
+Return ONLY valid JSON with no other text before or after it:
+{"conceptual":"...","practical":"...","collective":"..."}`,
       messages: [
         {
           role: "user",
@@ -36,8 +49,25 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    const reflection =
-      message.content[0].type === "text" ? message.content[0].text : null;
+    const raw = message.content[0].type === "text" ? message.content[0].text.trim() : null;
+
+    // Validate the response is the expected JSON shape; fall back to null if not
+    let reflection: string | null = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          typeof parsed.conceptual === "string" &&
+          typeof parsed.practical === "string" &&
+          typeof parsed.collective === "string"
+        ) {
+          reflection = raw;
+        }
+      } catch {
+        // Model returned non-JSON — discard rather than show malformed output
+      }
+    }
 
     // Store reflection alongside the journal entry
     if (reflection && entryId) {

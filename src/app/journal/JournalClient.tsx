@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MISSIONS } from "@/lib/missions";
-import { formatDate, isWithin24Hours, truncate } from "@/lib/utils";
+import { formatDate, isWithin24Hours, truncate, parseReflection } from "@/lib/utils";
 import type { JournalEntry } from "@/types/database";
 import AppShell from "@/components/layout/AppShell";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,22 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "weekly-challenge": "Weekly Challenge",
   "weekly-challenge-debrief": "Challenge Debrief",
   "what-matters": "What Matters",
+  "contribution-map": "The Contribution Map",
+  "the-other-side": "The Other Side",
+  "commitment-statement": "Commitment Statement",
+  "purpose-challenge": "Weekly Challenge",
   belonging: "Where You Belong",
+  "fitting-in-vs-belonging": "Fitting In vs. Belonging",
+  "across-the-gap": "Across the Gap",
+  "people-who-shaped-you": "The People Who Shaped You",
+  "connection-challenge": "Weekly Challenge",
+  "connection-challenge-debrief": "Challenge Debrief",
   "future-self": "Future Self",
+  "digital-self": "Digital Self",
+  "the-through-line": "The Through-Line",
+  "meaning-letter": "A Life Worth Building",
+  "meaning-challenge": "Weekly Challenge",
+  "meaning-challenge-debrief": "Challenge Debrief",
 };
 
 export default function JournalClient({ entries }: { entries: JournalEntry[] }) {
@@ -162,22 +176,41 @@ export default function JournalClient({ entries }: { entries: JournalEntry[] }) 
                         {entry.response}
                       </p>
 
-                      {entry.ai_reflection && (
-                        <div
-                          className="mt-4 p-4 rounded-xl border"
-                          style={{
-                            background: "rgba(46, 125, 140, 0.04)",
-                            borderColor: "rgba(46, 125, 140, 0.2)",
-                          }}
-                        >
-                          <div className="text-xs font-semibold text-teal mb-1 uppercase tracking-wide">
-                            Something to sit with
+                      {entry.ai_reflection && (() => {
+                        const parsed = parseReflection(entry.ai_reflection);
+                        if (!parsed) return null;
+                        return (
+                          <div
+                            className="mt-4 p-4 rounded-xl border"
+                            style={{
+                              background: "rgba(46, 125, 140, 0.04)",
+                              borderColor: "rgba(46, 125, 140, 0.2)",
+                            }}
+                          >
+                            <div className="text-xs font-semibold text-teal mb-3 uppercase tracking-wide">
+                              Something to sit with
+                            </div>
+                            {parsed.type === "tricheck" ? (
+                              <div className="space-y-3">
+                                {([
+                                  { label: "What you believe", q: parsed.tricheck.conceptual },
+                                  { label: "Something to try", q: parsed.tricheck.practical },
+                                  { label: "Who gets it",      q: parsed.tricheck.collective },
+                                ] as const).map(({ label, q }) => (
+                                  <div key={label} className="flex gap-3">
+                                    <span className="text-[10px] font-semibold text-teal/50 uppercase tracking-wide w-[5.5rem] flex-shrink-0 pt-0.5 leading-tight">
+                                      {label}
+                                    </span>
+                                    <p className="text-sm text-ink leading-relaxed">{q}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-ink">{parsed.text}</p>
+                            )}
                           </div>
-                          <p className="text-sm text-ink">
-                            {entry.ai_reflection}
-                          </p>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {!canEdit && (
                         <p className="text-xs text-ink-muted/60 mt-3">
