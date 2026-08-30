@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProductPreview from "@/components/landing/ProductPreview";
 
 export default function LandingPage() {
   return (
@@ -48,12 +49,26 @@ export default function LandingPage() {
         </h1>
 
         <p
-          className="text-lg text-ink-muted max-w-xl mx-auto mb-10 leading-relaxed"
+          className="text-lg text-ink-muted max-w-xl mx-auto mb-4 leading-relaxed"
           data-animate="3"
         >
           Groundwork is a self-guided programme that helps teenagers develop
           identity, purpose, connection, and meaning — through honest reflection
           and real-world challenges.
+        </p>
+
+        {/* The whole architecture in one sentence — repeated verbatim wherever
+            someone meets Groundwork for the first time. */}
+        <p
+          className="text-base text-ink-muted/90 max-w-xl mx-auto mb-10 leading-relaxed"
+          data-animate="3"
+        >
+          <strong className="text-ink font-medium">Four missions</strong> to go
+          deep on one question each,{" "}
+          <strong className="text-ink font-medium">a weekly challenge</strong> to
+          try it in the real world, and{" "}
+          <strong className="text-ink font-medium">a journal</strong> that shows
+          you what&apos;s changed when you look back.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center" data-animate="4">
@@ -71,10 +86,18 @@ export default function LandingPage() {
           </Link>
         </div>
 
+        {/* What it actually looks like — the same dashboard you land on. */}
+        <div className="mt-14" data-animate="5">
+          <ProductPreview />
+          <p className="mt-4 text-xs text-ink-muted/60">
+            Your dashboard after Mission 1, step two.
+          </p>
+        </div>
+
         {/* Honest disclaimer */}
         <p
-          className="mt-8 text-sm text-ink-muted/70 max-w-md mx-auto"
-          data-animate="5"
+          className="mt-10 text-sm text-ink-muted/70 max-w-md mx-auto"
+          data-animate="6"
         >
           This isn&apos;t a therapy app. If something feels too heavy to carry alone, please talk to someone you trust.
         </p>
@@ -93,7 +116,10 @@ export default function LandingPage() {
             Four missions. One question each.
           </h2>
           <p className="text-ink-muted max-w-lg mx-auto">
-            You move through each mission at your own pace — about 15 minutes a week. Reflective activities, real stories, and one challenge to try in the world.
+            Each mission is five steps: four reflective activities of about
+            10&ndash;15 minutes, then one challenge you carry through the week.
+            Twenty steps in total. Most people do one a week — but nothing
+            expires, and nothing nags you.
           </p>
         </div>
 
@@ -156,7 +182,7 @@ export default function LandingPage() {
             {
               icon: "🔒",
               title: "Private by default",
-              body: "Everything you write is yours. Nothing is shared, compared, or scored.",
+              body: "Everything you write is yours. Nothing is shared with other users, compared, or scored — and our privacy policy says exactly where it does go.",
             },
             {
               icon: "🤝",
@@ -190,7 +216,8 @@ export default function LandingPage() {
             Ready to do the work?
           </h2>
           <p className="text-white/70 mb-8 max-w-sm mx-auto">
-            It takes about 15 minutes a week. The results last longer than that.
+            Mission 1, step one, takes about 10 minutes. The results last a lot
+            longer than that.
           </p>
           <Link
             href="/auth?mode=signup"
@@ -202,7 +229,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-surface-border py-8 text-center text-sm text-ink-muted/60 px-6">
+      <footer className="border-t border-surface-border py-8 text-center text-sm text-ink-muted/60 px-6 space-y-4">
         <p>
           Groundwork is not a therapy replacement. If you need support, please
           speak to a trusted adult or call{" "}
@@ -214,6 +241,14 @@ export default function LandingPage() {
           </a>
           .
         </p>
+        <nav className="flex items-center justify-center gap-6">
+          <Link href="/privacy" className="underline hover:text-ink-muted transition-colors">
+            Privacy
+          </Link>
+          <Link href="/terms" className="underline hover:text-ink-muted transition-colors">
+            Terms
+          </Link>
+        </nav>
       </footer>
     </div>
   );

@@ -89,7 +89,7 @@ export default function SupportClient({
                     className="text-xs text-ink-muted/50 hover:text-red-400 transition-colors p-1"
                     aria-label="Remove"
                   >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <path
                         d="M3 3l8 8M11 3l-8 8"
                         stroke="currentColor"

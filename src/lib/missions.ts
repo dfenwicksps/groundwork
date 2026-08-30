@@ -166,7 +166,7 @@ export const MISSIONS: Mission[] = [
         title: "Values Clarifier",
         subtitle: "Step 2 of 5 · Inner compass",
         intro:
-          "Strengths are about what you can do. Values sit even deeper — they're the beliefs that drive you from the inside, whether or not anyone else can see them. Both live at the core of your inner compass. This step asks you to move from ability to belief: from 'I'm good at this' to 'this genuinely matters to me.' Hover over any value to read its definition.",
+          "Strengths are about what you can do. Values sit even deeper — they're the beliefs that drive you from the inside, whether or not anyone else can see them. Both live at the core of your inner compass. This step asks you to move from ability to belief: from 'I'm good at this' to 'this genuinely matters to me.' Tap the i on any value to read its definition.",
         warmUp:
           "Think about a recent decision you feel good about — something that felt right, even if it was hard. What was the value underneath that decision, even if you didn't name it at the time?",
         prompt:

@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import ConfirmEmailBanner from "@/components/common/ConfirmEmailBanner";
 
 const NAV_ITEMS = [
   {
     href: "/dashboard",
     label: "Home",
     icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
           d="M3 10.5L10 3.5l7 7"
           stroke="currentColor"
@@ -32,7 +33,7 @@ const NAV_ITEMS = [
     href: "/missions/1",
     label: "Missions",
     icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle
           cx="10"
           cy="10"
@@ -54,7 +55,7 @@ const NAV_ITEMS = [
     href: "/journal",
     label: "Journal",
     icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect
           x="4"
           y="3"
@@ -77,7 +78,7 @@ const NAV_ITEMS = [
     href: "/stories",
     label: "Stories",
     icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
           d="M10 4C7 4 4.5 6 4.5 8.5c0 2 1.3 3.7 3.2 4.4L10 16l2.3-3.1c1.9-.7 3.2-2.4 3.2-4.4C15.5 6 13 4 10 4z"
           stroke="currentColor"
@@ -92,7 +93,7 @@ const NAV_ITEMS = [
     href: "/support",
     label: "Support",
     icon: (active: boolean) => (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path
           d="M13.5 6.5C13.5 8.43 11.93 10 10 10C8.07 10 6.5 8.43 6.5 6.5C6.5 4.57 8.07 3 10 3C11.93 3 13.5 4.57 13.5 6.5Z"
           stroke="currentColor"
@@ -147,6 +148,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+
+      {/* Unconfirmed-email nudge — never a blocker, just a reminder */}
+      <ConfirmEmailBanner />
 
       {/* Page content */}
       <main className="flex-1 pb-24">{children}</main>

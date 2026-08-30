@@ -1,7 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MISSIONS } from "@/lib/missions";
+import {
+  type ProcessingStyle,
+  getProcessingStyle,
+  STYLE_LABELS,
+} from "@/lib/processingStyle";
 import { formatRelativeDate, truncate, cn } from "@/lib/utils";
 import type {
   UserProfile,
@@ -88,6 +94,10 @@ export default function DashboardClient({
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // Processing style lives in localStorage, so it can only be read after mount.
+  const [style, setStyle] = useState<ProcessingStyle | null>(null);
+  useEffect(() => setStyle(getProcessingStyle()), []);
+
   const activeMission = MISSIONS.find((m) => m.id === profile.active_mission) || MISSIONS[0];
   const activeMissionProgress = getMissionProgress(profile.active_mission, progress);
 
@@ -106,6 +116,31 @@ export default function DashboardClient({
           >
             {firstName}.
           </h1>
+
+          {/* The same one-sentence description of the whole thing that the
+              landing page leads with — shown until the first activity lands. */}
+          {totalCompleted === 0 && (
+            <p className="text-sm text-ink-muted mt-3 leading-relaxed max-w-md">
+              Four missions to go deep on one question each, a weekly challenge
+              to try it in the real world, and a journal that shows you
+              what&apos;s changed when you look back.
+            </p>
+          )}
+
+          {/* Invisible tailoring, made visible. */}
+          {style && (
+            <p className="text-xs text-ink-muted/70 mt-3">
+              You&apos;re seeing the{" "}
+              <span className="font-medium text-ink-muted">
+                {STYLE_LABELS[style].name}
+              </span>{" "}
+              version of each activity.{" "}
+              <Link href="/settings" className="text-teal hover:underline">
+                Change it any time
+              </Link>
+              .
+            </p>
+          )}
         </div>
 
         {/* Active Mission Card */}
@@ -163,7 +198,7 @@ export default function DashboardClient({
                 className="inline-flex items-center gap-2 mt-4 bg-white/20 hover:bg-white/30 transition-colors px-4 py-2 rounded-lg text-sm font-medium"
               >
                 Continue mission
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path
                     d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
                     stroke="currentColor"
@@ -205,7 +240,7 @@ export default function DashboardClient({
                   &ldquo;{truncate(revisitEntry.response, 100)}&rdquo;
                 </p>
               </div>
-              <svg
+              <svg aria-hidden="true"
                 width="14"
                 height="14"
                 viewBox="0 0 14 14"
@@ -247,7 +282,7 @@ export default function DashboardClient({
                   </p>
                 )}
               </div>
-              <svg
+              <svg aria-hidden="true"
                 width="14"
                 height="14"
                 viewBox="0 0 14 14"
@@ -304,15 +339,8 @@ export default function DashboardClient({
               const isActive = mission.id === profile.active_mission;
               const isLocked = mission.id > profile.active_mission;
 
-              return (
-                <Link
-                  key={mission.id}
-                  href={isLocked ? "#" : `/missions/${mission.id}`}
-                  className={`card p-4 transition-all group ${
-                    isLocked ? "pointer-events-none" : "hover:shadow-card"
-                  }`}
-                  aria-disabled={isLocked}
-                >
+              const cardBody = (
+                <>
                   <div className="flex items-center justify-between mb-3">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold text-white"
@@ -340,9 +368,6 @@ export default function DashboardClient({
                   >
                     {mission.title}
                   </div>
-                  <div className={`text-xs mb-0.5 ${isLocked ? "text-ink-muted/40" : "text-ink-muted/70"}`}>
-                    {mission.phaseLabel}
-                  </div>
                   <div className={`text-xs mb-3 line-clamp-1 ${isLocked ? "text-ink-muted/40" : "text-ink-muted"}`} style={{ fontStyle: "italic" }}>
                     {mission.question}
                   </div>
@@ -357,6 +382,22 @@ export default function DashboardClient({
                   {isLocked && (
                     <div className="h-1.5 rounded-full bg-surface-border/50" />
                   )}
+                </>
+              );
+
+              // A locked mission is not a link — a disabled anchor is still
+              // focusable and still announces itself as one.
+              return isLocked ? (
+                <div key={mission.id} className="card p-4">
+                  {cardBody}
+                </div>
+              ) : (
+                <Link
+                  key={mission.id}
+                  href={`/missions/${mission.id}`}
+                  className="card p-4 block transition-all group hover:shadow-card"
+                >
+                  {cardBody}
                 </Link>
               );
             })}
@@ -412,7 +453,7 @@ export default function DashboardClient({
                       </div>
                     </div>
                   </div>
-                  <svg
+                  <svg aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 14 14"

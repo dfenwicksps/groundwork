@@ -20,8 +20,14 @@ create table if not exists public.users (
   display_name text,
   created_at timestamptz default now() not null,
   onboarding_complete boolean default false not null,
-  active_mission int default 1 not null
+  active_mission int default 1 not null,
+  -- When false, journal text is never sent to the follow-up-question service.
+  ai_reflections_enabled boolean default true not null
 );
+
+-- For projects created before this column existed.
+alter table public.users
+  add column if not exists ai_reflections_enabled boolean default true not null;
 
 -- Onboarding results
 create table if not exists public.onboarding_results (

@@ -37,7 +37,9 @@ export default function ActivityClient({
   const [response, setResponse] = useState(existingEntry?.response || "");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [valueReasons, setValueReasons] = useState<Record<string, string>>({});
-  const [hoveredValue, setHoveredValue] = useState<string | null>(null);
+  const [openValue, setOpenValue] = useState<string | null>(null);
+  const [blockedValue, setBlockedValue] = useState<string | null>(null);
+  const blockedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -110,9 +112,16 @@ export default function ActivityClient({
       const updated = { ...valueReasons };
       delete updated[val];
       setValueReasons(updated);
-    } else if (selectedValues.length < (activity.valuesCount || 5)) {
-      setSelectedValues([...selectedValues, val]);
+      return;
     }
+    if (selectedValues.length >= (activity.valuesCount || 5)) {
+      // Say why nothing happened, rather than leaving a dead-looking button.
+      setBlockedValue(val);
+      if (blockedTimer.current) clearTimeout(blockedTimer.current);
+      blockedTimer.current = setTimeout(() => setBlockedValue(null), 1800);
+      return;
+    }
+    setSelectedValues([...selectedValues, val]);
   }
 
   // ─── Sentence starter ────────────────────────────────────────────────────────
@@ -267,7 +276,7 @@ export default function ActivityClient({
           href={`/missions/${mission.id}`}
           className="inline-flex items-center gap-1 text-ink-muted hover:text-ink text-sm mb-6 transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {mission.title}
@@ -284,7 +293,7 @@ export default function ActivityClient({
                 color: mission.colour,
               }}
             >
-              {mission.phaseLabel}
+              {mission.subtitle} — {mission.title}
             </span>
           </div>
           <h1
@@ -300,7 +309,7 @@ export default function ActivityClient({
           )}
           {activity.timeEstimate && (
             <div className="flex items-center gap-1.5 mt-2 text-xs text-ink-muted">
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none">
                 <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M6 3.5V6l2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
@@ -343,7 +352,7 @@ export default function ActivityClient({
                     {pairedStory.teaser}
                   </div>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-muted/40 flex-shrink-0">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-ink-muted/40 flex-shrink-0">
                   <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Link>
@@ -376,7 +385,7 @@ export default function ActivityClient({
                   onClick={() => setWhyExpanded((v) => !v)}
                   className="flex items-center gap-2 text-xs font-semibold text-teal hover:text-teal/80 transition-colors w-full text-left"
                 >
-                  <svg
+                  <svg aria-hidden="true"
                     width="12"
                     height="12"
                     viewBox="0 0 12 12"
@@ -596,44 +605,74 @@ export default function ActivityClient({
               <div>
                 <p className="text-sm text-ink-muted mb-4">
                   Select {activity.valuesCount || 5} values ({selectedValues.length} of{" "}
-                  {activity.valuesCount || 5} chosen) — hover any value to see its definition
+                  {activity.valuesCount || 5} chosen) — tap the{" "}
+                  <span className="font-medium">i</span> on any value to read what
+                  it means.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {(activity.valuesOptions || []).map((val) => {
                     const sel = selectedValues.includes(val);
-                    const disabled = !sel && selectedValues.length >= (activity.valuesCount || 5);
+                    const atLimit = !sel && selectedValues.length >= (activity.valuesCount || 5);
+                    const nudging = blockedValue === val;
+                    const expanded = openValue === val;
                     return (
-                      <button
-                        key={val}
-                        onClick={() => toggleValue(val)}
-                        onMouseEnter={() => setHoveredValue(val)}
-                        onMouseLeave={() => setHoveredValue(null)}
-                        disabled={disabled}
-                        className={cn(
-                          "p-3 rounded-xl text-sm font-medium border transition-all text-left",
-                          sel
-                            ? "bg-navy text-white border-navy"
-                            : disabled
-                            ? "opacity-40 bg-surface-muted border-surface-border cursor-not-allowed"
-                            : "bg-white text-ink border-surface-border hover:border-navy/30"
-                        )}
-                      >
-                        {val}
-                      </button>
+                      <div key={val} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => toggleValue(val)}
+                          aria-pressed={sel}
+                          className={cn(
+                            "w-full h-full p-3 pr-7 rounded-xl text-sm font-medium border transition-all text-left",
+                            nudging && "animate-nudge",
+                            sel
+                              ? "bg-navy text-white border-navy"
+                              : atLimit
+                              ? "bg-white text-ink-muted border-surface-border hover:border-navy/20"
+                              : "bg-white text-ink border-surface-border hover:border-navy/30"
+                          )}
+                        >
+                          {/* Selection is marked by a tick as well as by colour. */}
+                          {sel && <span aria-hidden="true" className="mr-1">✓</span>}
+                          {val}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOpenValue(expanded ? null : val)}
+                          aria-expanded={expanded}
+                          aria-label={`What ${val} means`}
+                          className={cn(
+                            "absolute top-1.5 right-1.5 w-[18px] h-[18px] rounded-full border",
+                            "text-[11px] font-semibold leading-none",
+                            "flex items-center justify-center transition-colors",
+                            sel
+                              ? "border-white/50 text-white/90 hover:bg-white/20"
+                              : "border-ink-muted/35 text-ink-muted hover:border-navy hover:text-navy"
+                          )}
+                        >
+                          i
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
 
-                {/* Value definition tooltip area — fixed height prevents layout shift */}
-                <div className="h-[5.5rem] mb-4 flex items-start">
-                  {hoveredValue ? (
+                {/* Definition / feedback area — fixed height prevents layout shift */}
+                <div className="min-h-[5.5rem] mb-4 flex items-start">
+                  {blockedValue ? (
+                    <div role="status" className="w-full rounded-xl bg-gold/10 border border-gold/30 px-4 py-3 text-sm text-ink">
+                      You&apos;ve chosen {activity.valuesCount || 5}. Tap one of
+                      them to swap it out first.
+                    </div>
+                  ) : openValue ? (
                     <div className="w-full rounded-xl bg-teal/5 border border-teal/20 px-4 py-3 text-sm text-ink-muted">
-                      <span className="font-semibold text-ink">{hoveredValue}: </span>
-                      {VALUES_WITH_DEFINITIONS[hoveredValue] || ""}
+                      <span className="font-semibold text-ink">{openValue}: </span>
+                      {VALUES_WITH_DEFINITIONS[openValue] || ""}
                     </div>
                   ) : (
-                    <p className="text-xs text-ink-muted/50 px-1 pt-1">Hover over a value to learn more</p>
+                    <p className="text-xs text-ink-muted/50 px-1 pt-1">
+                      Not sure what one means? Tap its <span className="font-medium">i</span>.
+                    </p>
                   )}
                 </div>
 

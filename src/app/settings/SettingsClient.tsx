@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import AppShell from "@/components/layout/AppShell";
 import { cn } from "@/lib/utils";
+import {
+  type ProcessingStyle,
+  getProcessingStyle,
+  setProcessingStyle,
+  STYLE_LABELS,
+  STYLE_ORDER,
+} from "@/lib/processingStyle";
 
 const ALL_VALUES = [
   "Courage",
@@ -26,11 +34,13 @@ export default function SettingsClient({
   email,
   displayName,
   savedValues,
+  aiReflectionsEnabled,
 }: {
   userId: string;
   email: string;
   displayName: string;
   savedValues: string[];
+  aiReflectionsEnabled: boolean;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -43,6 +53,13 @@ export default function SettingsClient({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
 
+  const [aiEnabled, setAiEnabled] = useState(aiReflectionsEnabled);
+  const [savingAi, setSavingAi] = useState(false);
+
+  // Processing style lives in localStorage, so it can only be read after mount.
+  const [style, setStyle] = useState<ProcessingStyle | null>(null);
+  useEffect(() => setStyle(getProcessingStyle()), []);
+
   const [selectedValues, setSelectedValues] = useState<string[]>(savedValues);
   const [savingValues, setSavingValues] = useState(false);
   const [savedValues2, setSavedValues2] = useState(false);
@@ -54,6 +71,19 @@ export default function SettingsClient({
     } else if (selectedValues.length < 3) {
       setSelectedValues([...selectedValues, val]);
     }
+  }
+
+  async function toggleAiReflections() {
+    const next = !aiEnabled;
+    setAiEnabled(next);
+    setSavingAi(true);
+    await db.from("users").update({ ai_reflections_enabled: next }).eq("id", userId);
+    setSavingAi(false);
+  }
+
+  function chooseStyle(next: ProcessingStyle) {
+    setProcessingStyle(next);
+    setStyle(next);
   }
 
   async function handleSaveValues() {
@@ -189,8 +219,10 @@ export default function SettingsClient({
                       type="button"
                       onClick={() => toggleValue(val)}
                       disabled={disabled}
+                      aria-pressed={selected}
                       className={cn(
                         "p-3 rounded-xl text-sm font-medium transition-all border",
+                        "flex items-center justify-center gap-1.5",
                         selected
                           ? "bg-navy text-white border-navy"
                           : disabled
@@ -198,6 +230,8 @@ export default function SettingsClient({
                           : "bg-white text-ink border-surface-border hover:border-navy/30"
                       )}
                     >
+                      {/* Selection is marked by a tick as well as by colour. */}
+                      {selected && <span aria-hidden="true">✓</span>}
                       {val}
                     </button>
                   );
@@ -223,8 +257,108 @@ export default function SettingsClient({
           )}
         </div>
 
+        {/* How Groundwork is tailored to you */}
+        <div data-animate="4" className="card p-6">
+          <h2 className="font-semibold text-ink mb-1">How activities are presented</h2>
+          <p className="text-sm text-ink-muted mb-4">
+            We picked this from the three questions you answered at the start. It
+            changes how much scaffolding each activity gives you — never what the
+            activities are. Change it whenever you like.
+          </p>
+          <div className="space-y-2">
+            {STYLE_ORDER.map((option) => {
+              const active = style === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => chooseStyle(option)}
+                  aria-pressed={active}
+                  className={cn(
+                    "w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3",
+                    active
+                      ? "border-teal bg-teal/5 ring-1 ring-teal"
+                      : "border-surface-border bg-white hover:border-teal/40"
+                  )}
+                  style={{ borderWidth: "1.5px" }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "w-4 h-4 rounded-full border flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5",
+                      active ? "bg-teal border-teal text-white" : "border-surface-border text-transparent"
+                    )}
+                  >
+                    ✓
+                  </span>
+                  <span>
+                    <span className="block font-medium text-ink text-sm">
+                      {STYLE_LABELS[option].name}
+                    </span>
+                    <span className="block text-xs text-ink-muted mt-0.5">
+                      {STYLE_LABELS[option].blurb}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Privacy controls */}
+        <div data-animate="5" className="card p-6">
+          <h2 className="font-semibold text-ink mb-1">Privacy</h2>
+          <p className="text-sm text-ink-muted mb-4">
+            After a reflection, Groundwork can offer three follow-up questions to
+            sit with. Writing those means sending the start of what you wrote to
+            an outside service. Turn this off and nothing you write ever leaves
+            our database.
+          </p>
+          <button
+            type="button"
+            onClick={toggleAiReflections}
+            disabled={savingAi}
+            role="switch"
+            aria-checked={aiEnabled}
+            className={cn(
+              "w-full text-left p-4 rounded-xl border transition-all flex items-center gap-3",
+              aiEnabled ? "border-teal bg-teal/5" : "border-surface-border bg-white"
+            )}
+            style={{ borderWidth: "1.5px" }}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "w-9 h-5 rounded-full flex-shrink-0 relative transition-colors",
+                aiEnabled ? "bg-teal" : "bg-surface-border"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
+                  aiEnabled ? "left-[1.125rem]" : "left-0.5"
+                )}
+              />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-medium text-ink">
+                Follow-up questions {aiEnabled ? "are on" : "are off"}
+              </span>
+              <span className="block text-xs text-ink-muted mt-0.5">
+                {aiEnabled
+                  ? "Your reflections are sent for question-writing only, and never used to train anything."
+                  : "Nothing you write leaves Groundwork."}
+              </span>
+            </span>
+          </button>
+          <div className="flex gap-4 mt-4 text-sm">
+            <Link href="/privacy" className="text-teal hover:underline">Privacy policy</Link>
+            <Link href="/terms" className="text-teal hover:underline">Terms</Link>
+          </div>
+        </div>
+
         {/* Account actions */}
-        <div data-animate="4" className="card p-6 space-y-3">
+        <div data-animate="6" className="card p-6 space-y-3">
           <h2 className="font-semibold text-ink">Account</h2>
           <button
             onClick={handleSignOut}
@@ -236,7 +370,7 @@ export default function SettingsClient({
 
         {/* Danger zone */}
         <div
-          data-animate="5"
+          data-animate="6"
           className="rounded-xl p-6 border border-red-100 bg-red-50/30"
         >
           <h2 className="font-semibold text-red-800 mb-2">Danger zone</h2>
@@ -291,8 +425,12 @@ export default function SettingsClient({
 
         {/* Privacy note */}
         <div data-animate="6" className="text-xs text-ink-muted/60 text-center pb-4">
-          Groundwork is not a therapy replacement. All journal content is
-          private and encrypted. We never sell your data.
+          Groundwork is not a therapy replacement. Your journal is visible only to
+          you, and we never sell your data — the{" "}
+          <Link href="/privacy" className="underline hover:text-ink-muted">
+            privacy policy
+          </Link>{" "}
+          spells out exactly what that means.
         </div>
       </div>
     </AppShell>

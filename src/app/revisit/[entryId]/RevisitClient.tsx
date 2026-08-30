@@ -89,7 +89,7 @@ export default function RevisitClient({
           href="/dashboard"
           className="inline-flex items-center gap-1 text-ink-muted hover:text-ink text-sm mb-6 transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path
               d="M9 11L5 7l4-4"
               stroke="currentColor"
